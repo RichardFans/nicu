@@ -1,0 +1,33 @@
+<div class="table-responsive">
+    <script type="text/ng-template" id="custom/pager">
+        <ul class="pager ng-cloak">
+            <li ng-repeat="page in pages"
+                ng-class="{'disabled': !page.active && !page.current, 'active': page.current}"
+                ng-switch="page.type">
+                <a ng-switch-when="prev" ng-click="params.page(page.number)" href="">上一页</a>
+                <a ng-switch-when="first" ng-click="params.page(page.number)" href=""><span
+                        ng-bind="page.number"></span></a>
+                <a ng-switch-when="page" ng-click="params.page(page.number)" href=""><span
+                        ng-bind="page.number"></span></a>
+                <a ng-switch-when="more" ng-click="params.page(page.number)" href="">&#8230;</a>
+                <a ng-switch-when="last" ng-click="params.page(page.number)" href=""><span
+                        ng-bind="page.number"></span></a>
+                <a ng-switch-when="next" ng-click="params.page(page.number)" href="">下一页</a>
+            </li>
+        </ul>
+    </script>
+
+    <table class="table table-bordered table-hover table-row-clicked" ng-table="tableParams"
+           template-pagination="custom/pager" show-filter="true">
+
+        <tr ng-repeat="msg in $data" ng-click="show(msg.title)">
+            <td data-title="'通知标题'" header-class="'text-left'" filter="{ 'title': 'text' }">{{msg.title}}</td>
+            <td data-title="'通知类型'" header-class="'text-left'" filter="{ 'type': 'select' }" filter-data="types()">{{msg.type}}</td>
+            <td data-title="'发布时间'" header-class="'text-left'" sortable="'published_at'">{{msg.published_at}}</td>
+            <td data-title="'发布人'" header-class="'text-left'" filter="{ 'published_by': 'select' }" filter-data="publishers()">
+                {{msg.published_by}}
+            </td>
+        </tr>
+    </table>
+
+</div>

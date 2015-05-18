@@ -1,0 +1,7 @@
+#some command
+artisan migrate --database='nodes' --path='database/migrations/nodes/'
+artisan migrate --database='node' --path='database/migrations/node/'
+
+rm storage/nodes.sqlite
+rm storage/huaxi.sqlite
+

@@ -1,0 +1,83 @@
+<div xmlns="http://www.w3.org/1999/html">
+    <div class="row">
+        <div class="col-lg-12">
+            <h1 class="page-header">首页</h1>
+        </div>
+        <!-- /.col-lg-12 -->
+    </div>
+    <!-- /.row -->
+    <div class="row">
+
+        <stats number="128" comments="住院人数" colour="primary" type="user"></stats>
+        <stats number="12" comments="留置中心静脉导管人数" colour="red" type="stumbleupon"></stats>
+        <stats number="28" comments="气管插管人数" colour="yellow" type="code-fork"></stats>
+        <stats number="6" comments="未读科室通知" colour="green" type="comments"></stats>
+
+    </div>
+
+    <div class="row">
+        <div class="col-lg-5">
+
+            <div class="alert alert-info">
+                <button type="button" class="close" aria-hidden="true" data-dismiss="alert">&times;</button>
+                您好，admin，这是您第100次登录，上次登录为2014-10-1.
+            </div>
+
+            <div class="panel panel-info">
+                <div class="panel-heading">
+                    <i class="fa fa-bar-chart fa-fw"></i>
+                    科室统计
+                </div>
+                <!-- /.panel-heading -->
+                <div class="panel-body">
+                    <div class="list-group">
+                        <a href="#" class="list-group-item">
+                            <i class="fa fa-user fa-fw"></i> 住院人数
+                                    <span class="pull-right badge progress-bar-success">128
+                                    </span>
+                        </a>
+                        <a href="#" class="list-group-item">
+                            <i class="fa fa-code-fork fa-fw"></i> 气管插管人数
+                                    <span class="pull-right badge progress-bar-info">28
+                                    </span>
+                        </a>
+                        <a href="#" class="list-group-item">
+                            <i class="fa fa-stumbleupon fa-fw"></i> 留置中心静脉导管人数
+                                    <span class="pull-right badge progress-bar-info">28
+                                    </span>
+                        </a>
+                        <a href="#" class="list-group-item">
+                            <i class="fa fa-tencent-weibo fa-fw"></i> 留置尿管人数
+                                    <span class="pull-right badge progress-bar-danger">98
+                                    </span>
+                        </a>
+                        <a href="#" class="list-group-item">
+                            <i class="fa fa-database fa-fw"></i> 耐药菌例数
+                                    <span class="pull-right badge progress-bar-danger">68
+                                    </span>
+                        </a>
+                    </div>
+                    <!-- /.list-group -->
+                </div>
+                <!-- /.panel-body -->
+            </div>
+
+        </div>
+
+        <div class="col-lg-7">
+            <div class="panel panel-info">
+                <div class="panel-heading">
+                    <i class="fa fa-bell fa-fw"></i>
+                    科室通知
+                </div>
+                <!-- /.panel-heading -->
+                <div class="panel-body">
+                    <notification-list></notification-list>
+                </div>
+                <!-- /.panel-body -->
+            </div>
+            <!-- /.panel -->
+        </div>
+
+    </div>
+</div>

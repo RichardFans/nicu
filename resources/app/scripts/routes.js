@@ -17,6 +17,59 @@ function MainRouter($stateProvider, $urlRouterProvider) {
             templateUrl: 'views/dashboard/home.html ',
             controller: 'HomeCtrl'
         })
+
+        .state('dashboard.patient-registration', {
+            templateUrl: 'views/dashboard/patients-manage/patient-registration.html',
+            url: '/patient-registration'
+        })
+        .state('dashboard.hospitalized-patients-manage', {
+            templateUrl: 'views/dashboard/patients-manage/hospitalized-patients-manage.html',
+            url: '/hospitalized-patients-manage'
+        })
+        .state('dashboard.patients-info', {
+            templateUrl: 'views/dashboard/patients-manage/patients-info.html',
+            url: '/patients-info'
+        })
+
+        .state('dashboard.user-profile', {
+            templateUrl: 'views/dashboard/user-office/user-profile.html',
+            url: '/user-profile'
+        })
+        .state('dashboard.user-ask4leave', {
+            templateUrl: 'views/dashboard/user-office/user-ask4leave.html',
+            url: '/user-office'
+        })
+        .state('dashboard.user-notification', {
+            templateUrl: 'views/dashboard/user-office/user-notification.html',
+            url: '/user-notification'
+        })
+        .state('dashboard.user-performance', {
+            templateUrl: 'views/dashboard/user-office/user-performance.html',
+            url: '/user-performance'
+        })
+
+        .state('dashboard.office-ask4leave', {
+            templateUrl: 'views/dashboard/office-work/office-ask4leave.html',
+            url: '/office-ask4leave'
+        })
+        .state('dashboard.office-notification', {
+            templateUrl: 'views/dashboard/office-work/office-notification.html',
+            url: '/office-notification'
+        })
+        .state('dashboard.office-performance', {
+            templateUrl: 'views/dashboard/office-work/office-performance.html',
+            url: '/office-performance'
+        })
+        .state('dashboard.office-mail-list', {
+            templateUrl: 'views/dashboard/office-work/office-mail-list.html',
+            url: '/office-mail-list'
+        })
+        .state('dashboard.office-birthday', {
+            templateUrl: 'views/dashboard/office-work/office-birthday.html',
+            url: '/office-birthday'
+        })
+
+
         .state('dashboard.form', {
             templateUrl: 'views/form.html',
             url: '/form'

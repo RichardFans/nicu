@@ -8,6 +8,7 @@ function MainRouter($stateProvider, $urlRouterProvider) {
     $urlRouterProvider.otherwise('/dashboard/home');
 
     $stateProvider
+        //主页
         .state('dashboard', {
             url: '/dashboard',
             templateUrl: 'views/dashboard/main.html'
@@ -18,6 +19,17 @@ function MainRouter($stateProvider, $urlRouterProvider) {
             controller: 'HomeCtrl'
         })
 
+        //远程医疗
+        .state('dashboard.remote-transfer', {
+            templateUrl: 'views/dashboard/remote-hospital/transfer-request.html',
+            url: '/transfer-request'
+        })
+        .state('dashboard.remote-evaluate', {
+            templateUrl: 'views/dashboard/remote-hospital/evaluate-request.html',
+            url: '/evaluate-request'
+        })
+
+        //病人管理
         .state('dashboard.patient-registration', {
             templateUrl: 'views/dashboard/patients-manage/patient-registration.html',
             url: '/patient-registration'
@@ -30,7 +42,12 @@ function MainRouter($stateProvider, $urlRouterProvider) {
             templateUrl: 'views/dashboard/patients-manage/patients-info.html',
             url: '/patients-info'
         })
+        .state('dashboard.work-report', {
+            templateUrl: 'views/dashboard/patients-manage/work-report.html',
+            url: '/work-report'
+        })
 
+        //个人中心
         .state('dashboard.user-profile', {
             templateUrl: 'views/dashboard/user-office/user-profile.html',
             url: '/user-profile'
@@ -48,6 +65,7 @@ function MainRouter($stateProvider, $urlRouterProvider) {
             url: '/user-performance'
         })
 
+        //办公管理
         .state('dashboard.office-ask4leave', {
             templateUrl: 'views/dashboard/office-work/office-ask4leave.html',
             url: '/office-ask4leave'
@@ -60,57 +78,44 @@ function MainRouter($stateProvider, $urlRouterProvider) {
             templateUrl: 'views/dashboard/office-work/office-performance.html',
             url: '/office-performance'
         })
-        .state('dashboard.office-mail-list', {
-            templateUrl: 'views/dashboard/office-work/office-mail-list.html',
-            url: '/office-mail-list'
-        })
-        .state('dashboard.office-birthday', {
-            templateUrl: 'views/dashboard/office-work/office-birthday.html',
-            url: '/office-birthday'
+        .state('dashboard.office-employee-info', {
+            templateUrl: 'views/dashboard/office-work/office-employee-info.html',
+            url: '/office-employee-info'
         })
 
+        //统计分析
+        .state('dashboard.statistics-quality', {
+            templateUrl: 'views/dashboard/statistics/statistics-quality.html',
+            url: '/statistics-quality'
+        })
+        .state('dashboard.statistics-hospital', {
+            templateUrl: 'views/dashboard/statistics/statistics-hospital.html',
+            url: '/statistics-hospital'
+        })
+        .state('dashboard.statistics-others', {
+            templateUrl: 'views/dashboard/statistics/statistics-others.html',
+            url: '/statistics-others'
+        })
 
-        .state('dashboard.form', {
-            templateUrl: 'views/form.html',
-            url: '/form'
+        //系统管理
+        .state('dashboard.system-employee', {
+            templateUrl: 'views/dashboard/system/employee-manage.html',
+            url: '/system-employee'
         })
-        .state('dashboard.blank', {
-            templateUrl: 'views/pages/blank.html',
-            url: '/blank'
+        .state('dashboard.system-hospital', {
+            templateUrl: 'views/dashboard/system/hospital-manage.html',
+            url: '/system-hospital'
         })
-        .state('dashboard.chart', {
-            templateUrl: 'views/chart.html',
-            url: '/chart',
-            controller: 'ChartCtrl'
+        .state('dashboard.system-office', {
+            templateUrl: 'views/dashboard/system/office-manage.html',
+            url: '/system-office'
         })
-        .state('dashboard.table', {
-            templateUrl: 'views/table.html',
-            url: '/table'
+        .state('dashboard.custom-report', {
+            templateUrl: 'views/dashboard/system/custom-report.html',
+            url: '/custom-report'
         })
-        .state('dashboard.panels-wells', {
-            templateUrl: 'views/ui-elements/panels-wells.html',
-            url: '/panels-wells'
-        })
-        .state('dashboard.buttons', {
-            templateUrl: 'views/ui-elements/buttons.html',
-            url: '/buttons'
-        })
-        .state('dashboard.notifications', {
-            templateUrl: 'views/ui-elements/notifications.html',
-            url: '/notifications'
-        })
-        .state('dashboard.typography', {
-            templateUrl: 'views/ui-elements/typography.html',
-            url: '/typography'
-        })
-        .state('dashboard.icons', {
-            templateUrl: 'views/ui-elements/icons.html',
-            url: '/icons'
-        })
-        .state('dashboard.grid', {
-            templateUrl: 'views/ui-elements/grid.html',
-            url: '/grid'
-        })
+
+        //登录
         .state('login', {
             templateUrl: 'views/pages/login.html',
             url: '/login',

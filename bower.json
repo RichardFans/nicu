@@ -2,34 +2,31 @@
   "name": "nicu",
   "version": "0.0.0",
   "dependencies": {
-    "angular": "~1.2.16",
+    "angular": "~1.3.15",
     "json3": "~3.3.1",
     "es5-shim": "~3.1.0",
-    "angular-resource": "1.2.16",
-    "angular-cookies": "1.2.16",
-    "angular-sanitize": "1.2.16",
+    "angular-resource": "~1.3.15",
+    "angular-cookies": "~1.3.15",
+    "angular-sanitize": "~1.3.15",
     "font-awesome": "4.3.0",
-    "angular-bootstrap": "0.12.0",
+    "angular-bootstrap": "0.13.0",
     "angular-loading-bar": "~0.7.0",
     "angular-ui-router": "~0.2.13",
     "angular-toggle-switch": "~1.2.1",
-
-    "angular-animate": "~1.2.16",
-    "angular-loading-bar": "~0.7.0",
-
+    "angular-animate": "~1.3.15",
     "metisMenu": "~1.1.3",
-    "ngstorage":"~0.3.0",
+    "ngstorage": "~0.3.0",
     "angular-chart.js": "~0.5.2",
     "angular-ui-select": "~0.11.2",
-    "ng-table": "~0.5.4"
-
+    "ng-table": "~0.5.4",
+    "angularjs-toaster": "~0.4.13"
   },
   "devDependencies": {
-    "angular-mocks": "1.2.16",
-    "angular-scenario": "1.2.16"
+    "angular-mocks": "~1.3.15",
+    "angular-scenario": "~1.3.15"
   },
-  "resolutions":{
-      "bootstrap": "~3.1.1"
-    },
+  "resolutions": {
+    "bootstrap": "~3.1.1"
+  },
   "appPath": "app"
 }

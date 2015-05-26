@@ -28,6 +28,18 @@ class Kernel extends HttpKernel {
 		'auth' => 'App\Http\Middleware\Authenticate',
 		'auth.basic' => 'Illuminate\Auth\Middleware\AuthenticateWithBasicAuth',
 		'guest' => 'App\Http\Middleware\RedirectIfAuthenticated',
+
+        /**
+         * 第三方库中间件
+         */
+        'jwt.auth' => 'Tymon\JWTAuth\Middleware\GetUserFromToken',
+        'jwt.refresh' => 'Tymon\JWTAuth\Middleware\RefreshToken',
+
+        /**
+         * 自定义中间件
+         */
+        //切换节点数据库
+        'switch_node_db' => 'App\Http\Middleware\SwitchToNodeDB',
 	];
 
 }

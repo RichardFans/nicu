@@ -2,33 +2,33 @@
 
 use App\Http\Controllers\Controller;
 use App\Models\Node\User;
-use HttpResponse;
+use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Input;
 use Illuminate\Support\Facades\Response;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
+//use Illuminate\Foundation\Auth\AuthenticatesAndRegistersUsers;
 class AuthController extends Controller
 {
 
-//	use AuthenticatesAndRegistersUsers;
-//
-//	public function __construct(Guard $auth, Registrar $registrar)
-//	{
-//		$this->auth = $auth;
-//		$this->registrar = $registrar;
-//
-//		$this->middleware('guest', ['except' => 'getLogout']);
-//	}
+    public function __construct()
+    {
+        $this->middleware('switch_node_db');
+    }
 
-    public function postLogin()
+    public function postLogin(Request $request)
     {
         $credentials = Input::only('username', 'password');
+        $node = Input::get('node');
+        $customClaims = ['node_id' => $node['id']];
 
-        if (!$token = JWTAuth::attempt($credentials)) {
+        if (!$token = JWTAuth::attempt($credentials, $customClaims)) {
             return Response::json(false, HttpResponse::HTTP_UNAUTHORIZED);
         }
+        $user = JWTAuth::toUser($token);
 
-        return Response::json(compact('token'));
+        return Response::json(compact('token', 'user'));
     }
 
     public function postRegister(Request $request)
@@ -46,4 +46,5 @@ class AuthController extends Controller
 
         return Response::json(compact('token'));
     }
+
 }

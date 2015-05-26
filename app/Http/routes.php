@@ -20,15 +20,19 @@ Route::controllers([
 //	'password' => 'Auth\PasswordController',
 ]);
 
-Route::group(array('prefix' => 'api'), function () {
+Route::group(['prefix' => 'api', 'middleware' => 'switch_node_db'], function () {
 
-    Route::group(array('prefix' => 'v1'), function () {
+    Route::group(['prefix' => 'v1'], function () {
 
-        Route::resource('users', 'Api\V1\UserController',
-            array('only' => array('index', 'store', 'show', 'update', 'destroy')));
+        Route::group(['middleware' => 'jwt.auth'], function() {
+            Route::resource('users', 'Api\V1\UserController',
+                ['only' => ['index', 'store', 'show', 'update', 'destroy']]);
+
+        });
 
         Route::resource('nodes', 'Api\V1\NodeController',
-            array('only' => array('index')));
+            ['only' => ['index']]);
 
     });
+
 });

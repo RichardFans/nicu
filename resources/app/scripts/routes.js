@@ -1,9 +1,9 @@
 'use strict';
 
 angular.module('nicu')
-    .config(['$stateProvider', '$urlRouterProvider', MainRouter]);
+    .config(['$stateProvider', '$urlRouterProvider', '$httpProvider', MainRouter]);
 
-function MainRouter($stateProvider, $urlRouterProvider) {
+function MainRouter($stateProvider, $urlRouterProvider, $httpProvider) {
 
     $urlRouterProvider.otherwise('/dashboard/home');
 
@@ -11,7 +11,10 @@ function MainRouter($stateProvider, $urlRouterProvider) {
         //主页
         .state('dashboard', {
             url: '/dashboard',
-            templateUrl: 'views/dashboard/main.html'
+            templateUrl: 'views/dashboard/main.html',
+            data: {
+                requireLogin: true
+            }
         })
         .state('dashboard.home', {
             url: '/home',
@@ -119,8 +122,48 @@ function MainRouter($stateProvider, $urlRouterProvider) {
         .state('login', {
             templateUrl: 'views/pages/login.html',
             url: '/login',
-            controller: 'LoginCtrl'
-        })
+            controller: 'LoginCtrl',
+            data: {
+                requireLogin: false
+            }
+        });
 
+    $httpProvider.interceptors.push(['$timeout', '$q', '$injector', 'Perference',
+        function ($timeout, $q, $injector, Perference) {
+            var $state;
 
+            $timeout(function () {
+                $state = $injector.get('$state');
+            });
+
+            return {
+                'request': function (config) {
+                    config.headers = config.headers || {};
+                    if (Perference.hasToken()) {
+                        config.headers.Authorization = 'Bearer ' + Perference.getToken();
+                    }
+                    return config;
+                },
+                'requestError': function (response) {
+                    if (response.status === 401 || response.status === 403) {
+                        Perference.deleteToken();
+                        $state.go('login');
+                    }
+                    return $q.reject(response);
+                }
+            };
+        }]);
 }
+
+angular.module('nicu').run(['$rootScope', '$state', 'Perference',
+    function ($rootScope, $state, Perference) {
+        $rootScope.$on('$stateChangeStart', function (event, toState) {
+            var requireLogin = toState.data.requireLogin;
+            //console.log('yyy: ' + toState.url);
+            if (requireLogin && !Perference.hasToken()) {
+                event.preventDefault();
+                //console.log('xxx');
+                $state.go('login');
+            }
+        });
+    }]);

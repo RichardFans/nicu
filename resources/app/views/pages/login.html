@@ -1,4 +1,6 @@
 <div class="container-fluid">
+    <toaster-container
+            toaster-options="{'time-out': 3000, 'close-button':true, 'animation-class': 'toast-top-center'}"></toaster-container>
     <div class="row">
 
         <div class="login-panel panel panel-default">
@@ -33,7 +35,7 @@
                         </div>
 
                         <div class="col-md-1" style="padding-top: 6px" ng-show="login_form.username.$dirty">
-                            <i class="fa fa-check-circle text-success"  ng-show="!login_form.username.$invalid"></i>
+                            <i class="fa fa-check-circle text-success" ng-show="!login_form.username.$invalid"></i>
                             <i class="fa fa-times-circle text-danger" ng-show="login_form.username.$invalid"></i>
                         </div>
 
@@ -50,7 +52,7 @@
                         </div>
 
                         <div class="col-md-1" style="padding-top: 6px" ng-show="login_form.password.$dirty">
-                            <i class="fa fa-check-circle text-success"  ng-show="!login_form.password.$invalid"></i>
+                            <i class="fa fa-check-circle text-success" ng-show="!login_form.password.$invalid"></i>
                             <i class="fa fa-times-circle text-danger" ng-show="login_form.password.$invalid"></i>
                         </div>
                     </div>
@@ -59,7 +61,7 @@
                         <div class="col-md-6 col-md-offset-4">
                             <div class="checkbox">
                                 <label>
-                                    <input type="checkbox" name="remember">记住密码
+                                    <input type="checkbox" ng-model="auto_login">自动登录
                                 </label>
                             </div>
                         </div>
@@ -79,18 +81,24 @@
                      ||  login_form.password.$invalid)">
                     <ul>
                         <li ng-show="login_form.username.$error.required">
-                            用户名不能为空！</li>
+                            用户名不能为空！
+                        </li>
                         <li ng-show=" login_form.username.$error.pattern">
-                            用户名只能由下划线、数字和字母构成！</li>
+                            用户名只能由下划线、数字和字母构成！
+                        </li>
                         <li ng-show=" login_form.username.$error.minlength">
-                            用户名长度至少是3！</li>
+                            用户名长度至少是3！
+                        </li>
 
                         <li ng-show="login_form.password.$error.required">
-                            密码不能为空！</li>
+                            密码不能为空！
+                        </li>
                         <li ng-show=" login_form.password.$error.pattern">
-                            密码只能由下划线、数字和字母构成！</li>
+                            密码只能由下划线、数字和字母构成！
+                        </li>
                         <li ng-show="login_form.password.$error.minlength">
-                            密码长度至少是6！</li>
+                            密码长度至少是6！
+                        </li>
                     </ul>
                 </div>
             </div>

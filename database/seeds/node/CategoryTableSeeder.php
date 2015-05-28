@@ -6,23 +6,16 @@
  * Time: 上午1:23
  */
 
-use App\Models\Node\Permission;
-use App\Models\Node\Role;
-use App\Models\Node\User;
-use App\Utils\TestHelper;
-use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 
-class RoleTableSeeder extends Seeder
+
+class CategoryTableSeeder extends Seeder
 {
     public function run()
     {
-        ////////////////////////////////
-        $this->command->info('  permissions...');
-//        DB::table('permissions')->delete();
-        Permission::truncate();
+        DB::table('categories')->delete();
 
-        $permissions = array(
+        $permissions = [
             //根权限
             ['name' => 'app', 'display_name' => '使用NICU的权限'],//id == 1
 
@@ -116,28 +109,18 @@ class RoleTableSeeder extends Seeder
 
             ['name' => 'app.setting.custom_report', 'display_name' => '自定义报表'],//64
 
-        );
+        ];
 
-        for ($i = 0; $i < count($permissions); $i++) {
-            $permissions[$i]['created_at'] = Carbon::now();
-            $permissions[$i]['updated_at'] = Carbon::now();
+        $this->command->info('  permissions...');
+        foreach ($permissions as $permission) {
+            Permission::create($permission);
         }
-
-        TestHelper::start();
-//        foreach ($permissions as $permission) {
-//            Permission::create($permission);
-//        }
-        Permission::insert($permissions);
-        TestHelper::end($this->command, 'permissions create');
 
         $permissions = Permission::all();
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         $this->command->info('  roles...');
-//        DB::table('roles')->delete();
-        Role::truncate();
-        DB::table('permission_role')->truncate();
-        DB::table('role_user')->truncate();
+        DB::table('categories')->delete();
 
         $roles = [
             ['name' => 'node_admin', 'display_name' => '节点管理员'],
@@ -146,41 +129,41 @@ class RoleTableSeeder extends Seeder
             ['name' => 'team_member', 'display_name' => '普通员工'],
         ];
 
-        for ($i = 0; $i < count($roles); $i++) {
-            $roles[$i]['created_at'] = Carbon::now();
-            $roles[$i]['updated_at'] = Carbon::now();
+        foreach ($roles as $role) {
+            Role::create($role);
         }
 
-        TestHelper::start();
-//        foreach ($roles as $role) {
-//            Role::create($role);
-//        }
-        Role::insert($roles);
-        TestHelper::end($this->command, 'roles create');
-
-        TestHelper::start();
         $roles = Role::all();
-        //节点管理员
-        $roles->get(0)->attachPermissions($permissions);
+
+        for ($i = 0; $i < count($roles); $i++) {
+            $roles->get($i)->attachPermissions($permissions);
+        }
 
         //科室主任用户
-        $roles->get(1)->attachPermissions($permissions->slice(0, 30)
-            ->merge($permissions->slice(32, 34))
-            ->merge($permissions->slice(36, 42)));
+        for ($i = 43; $i < 64; $i++) {
+            $roles->get(1)->detachPermission($permissions->get($i));
+        }
+        $roles->get(1)->detachPermission($permissions->get(31));
+        $roles->get(1)->detachPermission($permissions->get(35));
 
         //组长用户
-        $roles->get(2)->attachPermissions($permissions->slice(0, 31)
-            ->merge($permissions->slice(33, 35))
-            ->merge($permissions->slice(37, 42)));
+        for ($i = 43; $i < 64; $i++) {
+            $roles->get(2)->detachPermission($permissions->get($i));
+        }
+        $roles->get(2)->detachPermission($permissions->get(32));
+        $roles->get(2)->detachPermission($permissions->get(33));
+        $roles->get(2)->detachPermission($permissions->get(36));
 
         //普通员工
-        $roles->get(3)->attachPermissions($permissions->slice(0, 28)
-            ->merge($permissions->slice(36, 43)));
+        for ($i = 43; $i < 64; $i++) {
+            $roles->get(3)->detachPermission($permissions->get($i));
+        }
+        for ($i = 29; $i < 35; $i++) {
+            $roles->get(3)->detachPermission($permissions->get($i));
+        }
 
-        TestHelper::end($this->command, 'roles attachPermissions');
         ////////////////////////////////////////////////////////////////////////////////////////////
 
-        TestHelper::start();
         $users = User::all();
 
         $users->get(0)->attachRole($roles->get(0));
@@ -188,6 +171,5 @@ class RoleTableSeeder extends Seeder
         $users->get(2)->attachRole($roles->get(2));
         $users->get(3)->attachRole($roles->get(3));
         $users->get(4)->attachRole($roles->get(3));
-        TestHelper::end($this->command, 'User attachRole');
     }
 }

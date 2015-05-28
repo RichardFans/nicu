@@ -5,85 +5,145 @@
  * Date: 15-5-7
  * Time: 下午12:12
  */
+use App\Models\Node\User;
+use App\Utils\TestHelper;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
-use App\Models\Node\User;
 
-class UserTableSeeder extends Seeder {
+class UserTableSeeder extends Seeder
+{
     public function run()
     {
-        DB::table('users')->delete();
+//        DB::table('users')->delete();
+        User::truncate();
 
-        User::create(array(
-            'username' => 'he_lan',
-            'password' => bcrypt('888888'),
+        $users = [
+            //1
+            ['username' => 'richard',
+                'password' => bcrypt('888888'),
 
-            'last_ip' => '192.168.1.3',
-            'last_time' => Carbon::now(),
+                'last_ip' => '192.168.1.5',
+                'last_time' => Carbon::now(),
 
-            'name' => '何兰',
-            'phone' => '18615797850',
-            'email' => 'helan@163.com',
+                'name' => '范范',
+                'phone' => '15928792340',
+                'email' => 'fanfan@163.com',
 
-            'sex' => false,
-            'birthday' => Carbon::parse('1978-11-28'),
+                'sex' => false,
+                'birthday' => Carbon::parse('1986-10-17'),
 
-            'title' => 1,
-            'post' => '副主任',
-            'is_licensed' => true,
+                'title' => 1,
+                'post' => '主任',
+                'is_licensed' => true,
 
-            'edu_level' => 2,
-            'entry_time' => Carbon::parse('2012-02-20'),
+                'edu_level' => 2,
+                'entry_time' => Carbon::parse('2013-02-20'),
 
-            'type_id' => 1,
-        ));
+                'type_id' => 1,
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),],
+            //2
+            ['username' => 'he_lan',
+                'password' => bcrypt('888888'),
 
-        User::create(array(
-            'username' => 'sun_yong',
-            'password' => bcrypt('123456'),
+                'last_ip' => '192.168.1.3',
+                'last_time' => Carbon::now(),
 
-            'last_ip' => '192.168.1.4',
-            'last_time' => Carbon::now(),
+                'name' => '何兰',
+                'phone' => '18615797850',
+                'email' => 'helan@163.com',
 
-            'name' => '孙勇',
-            'phone' => '13666179587',
-            'email' => 'sunyong@163.com',
+                'sex' => false,
+                'birthday' => Carbon::parse('1978-11-28'),
 
-            'sex' => true,
-            'birthday' => Carbon::parse('1976-07-24'),
+                'title' => 1,
+                'post' => '副主任',
+                'is_licensed' => true,
 
-            'title' => 1,
-            'post' => '主治医师',
-            'is_licensed' => true,
+                'edu_level' => 2,
+                'entry_time' => Carbon::parse('2012-02-20'),
 
-            'edu_level' => 2,
-            'entry_time' => Carbon::parse('2013-10-01'),
+                'type_id' => 1,
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),],
+            //3
+            ['username' => 'sun_yong',
+                'password' => bcrypt('123456'),
 
-            'type_id' => 1,
-        ));
+                'last_ip' => '192.168.1.4',
+                'last_time' => Carbon::now(),
 
-        User::create(array(
-            'username' => 'wang_jin_rong',
-            'password' => bcrypt('123456'),
+                'name' => '孙勇',
+                'phone' => '13666179587',
+                'email' => 'sunyong@163.com',
 
-            'last_ip' => '192.168.1.5',
-            'last_time' => Carbon::now(),
+                'sex' => true,
+                'birthday' => Carbon::parse('1976-07-24'),
 
-            'name' => '王金容',
-            'phone' => '18382148620',
-            'email' => 'wjr@163.com',
+                'title' => 1,
+                'post' => '主治医师',
+                'is_licensed' => true,
 
-            'sex' => false,
-            'birthday' => Carbon::parse('1990-04-17'),
+                'edu_level' => 2,
+                'entry_time' => Carbon::parse('2013-10-01'),
 
-            'title' => 1,
-            'post' => '护士',
-            'is_licensed' => true,
+                'type_id' => 1,
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),],
+            //4
+            ['username' => 'wang_jin_rong',
+                'password' => bcrypt('123456'),
 
-            'edu_level' => 3,
-            'entry_time' => Carbon::parse('2014-04-15'),
+                'last_ip' => '192.168.1.5',
+                'last_time' => Carbon::now(),
 
-            'type_id' => 1,
-        ));
+                'name' => '王金容',
+                'phone' => '18382148620',
+                'email' => 'wjr@163.com',
+
+                'sex' => false,
+                'birthday' => Carbon::parse('1990-04-17'),
+
+                'title' => 1,
+                'post' => '护士',
+                'is_licensed' => true,
+
+                'edu_level' => 3,
+                'entry_time' => Carbon::parse('2014-04-15'),
+
+                'type_id' => 1,
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),],
+            //5
+            ['username' => 'alayang',
+                'password' => bcrypt('888888'),
+
+                'last_ip' => '192.168.1.6',
+                'last_time' => Carbon::now(),
+
+                'name' => '莹莹',
+                'phone' => '15528429375',
+                'email' => 'alayang@163.com',
+
+                'sex' => false,
+                'birthday' => Carbon::parse('1990-10-17'),
+
+                'title' => 1,
+                'post' => '护士',
+                'is_licensed' => true,
+
+                'edu_level' => 3,
+                'entry_time' => Carbon::parse('2014-04-15'),
+
+                'type_id' => 1,
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now(),],
+        ];
+        TestHelper::start();
+//        foreach ($users as $user) {
+//            User::create($user);
+//        }
+        User::insert($users);
+        TestHelper::end($this->command, 'users create');
     }
 }

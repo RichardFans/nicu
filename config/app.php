@@ -153,7 +153,7 @@ return [
         'Tymon\JWTAuth\Providers\JWTAuthServiceProvider',  //jwt认证
         'Barryvdh\Cors\CorsServiceProvider',    //跨源访问
         'Zizaco\Entrust\EntrustServiceProvider',  //角色与权限
-
+        'Baum\Providers\BaumServiceProvider',   //动态目录（树形结构）嵌套集合ORM
     ],
 
     /*

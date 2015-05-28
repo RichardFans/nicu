@@ -38,10 +38,14 @@ class DatabaseSeeder extends Seeder
                     '--database' => 'node',
                     '--path' => 'database/migrations/node'
                 ));
+            } else {
+                DB::setDefaultConnection('node');
+                DB::reconnect('node');
             }
             $this->call('UserTableSeeder');
             $this->call('RoleTableSeeder');
         }
+
     }
 
 }

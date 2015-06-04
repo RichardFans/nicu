@@ -7,5 +7,9 @@
  * Controller of the sbAdminApp
  */
 angular.module('nicu.controllers')
-    .controller('MainCtrl', function ($scope, $position) {
-    });
+    .controller('MainCtrl', ['$scope', MainCtrl]);
+
+function MainCtrl($scope) {
+
+
+}

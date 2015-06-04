@@ -25,14 +25,16 @@ $(function () {
     });
 
 });
+'use strict';
+
 angular.module('nicu', [
     'ui.router',
-    'ngStorage',
 
     'chart.js',
     'angular-loading-bar',
     'ui.select', 'ngSanitize',
     'ngTable',
+    'toaster',
 
     'nicu.directives',
     'nicu.controllers',
@@ -40,205 +42,90 @@ angular.module('nicu', [
     //'ui.utils',
 ]);
 
+angular.module('nicu').constant('urls', {
+    BASE: 'http://localhost:80',
+    BASE_API: 'http://localhost/api/v1'
+});
+
 angular.module('nicu.directives', ['ui.bootstrap']);
 
 angular.module('nicu.controllers', []);
 
-angular.module('nicu.services', ['ngResource']);
+angular.module('nicu.services', ['ngResource', 'ngStorage']);
+
+
 'use strict';
 
 angular.module('nicu')
-    .config(['$stateProvider', '$urlRouterProvider', MainRouter]);
+    .config(['$stateProvider', '$urlRouterProvider', '$httpProvider', MainRouter]);
 
-function MainRouter($stateProvider, $urlRouterProvider) {
+function MainRouter($stateProvider, $urlRouterProvider, $httpProvider) {
 
-    $urlRouterProvider.otherwise('/dashboard/home');
+    $urlRouterProvider.otherwise('/app/home');
 
     $stateProvider
         //主页
-        .state('dashboard', {
-            url: '/dashboard',
-            templateUrl: 'views/dashboard/main.html'
+        .state('app', {
+            url: '/app',
+            templateUrl: 'views/categories/main.html',
+            controller: 'MainCtrl',
+            data: {
+                requireLogin: true
+            }
         })
-        .state('dashboard.home', {
+        .state('app.home', {
             url: '/home',
-            templateUrl: 'views/dashboard/home.html ',
+            templateUrl: 'views/categories/home.html ',
             controller: 'HomeCtrl'
         })
-
-        //远程医疗
-        .state('dashboard.remote-transfer', {
-            templateUrl: 'views/dashboard/remote-hospital/transfer-request.html',
-            url: '/transfer-request'
-        })
-        .state('dashboard.remote-evaluate', {
-            templateUrl: 'views/dashboard/remote-hospital/evaluate-request.html',
-            url: '/evaluate-request'
-        })
-
-        //病人管理
-        .state('dashboard.patient-registration', {
-            templateUrl: 'views/dashboard/patients-manage/patient-registration.html',
-            url: '/patient-registration'
-        })
-        .state('dashboard.hospitalized-patients-manage', {
-            templateUrl: 'views/dashboard/patients-manage/hospitalized-patients-manage.html',
-            url: '/hospitalized-patients-manage'
-        })
-        .state('dashboard.patients-info', {
-            templateUrl: 'views/dashboard/patients-manage/patients-info.html',
-            url: '/patients-info'
-        })
-        .state('dashboard.work-report', {
-            templateUrl: 'views/dashboard/patients-manage/work-report.html',
-            url: '/work-report'
-        })
-
-        //个人中心
-        .state('dashboard.user-profile', {
-            templateUrl: 'views/dashboard/user-office/user-profile.html',
-            url: '/user-profile'
-        })
-        .state('dashboard.user-ask4leave', {
-            templateUrl: 'views/dashboard/user-office/user-ask4leave.html',
-            url: '/user-office'
-        })
-        .state('dashboard.user-notification', {
-            templateUrl: 'views/dashboard/user-office/user-notification.html',
-            url: '/user-notification'
-        })
-        .state('dashboard.user-performance', {
-            templateUrl: 'views/dashboard/user-office/user-performance.html',
-            url: '/user-performance'
-        })
-
-        //办公管理
-        .state('dashboard.office-ask4leave', {
-            templateUrl: 'views/dashboard/office-work/office-ask4leave.html',
-            url: '/office-ask4leave'
-        })
-        .state('dashboard.office-notification', {
-            templateUrl: 'views/dashboard/office-work/office-notification.html',
-            url: '/office-notification'
-        })
-        .state('dashboard.office-performance', {
-            templateUrl: 'views/dashboard/office-work/office-performance.html',
-            url: '/office-performance'
-        })
-        .state('dashboard.office-employee-info', {
-            templateUrl: 'views/dashboard/office-work/office-employee-info.html',
-            url: '/office-employee-info'
-        })
-
-        //统计分析
-        .state('dashboard.statistics-quality', {
-            templateUrl: 'views/dashboard/statistics/statistics-quality.html',
-            url: '/statistics-quality'
-        })
-        .state('dashboard.statistics-hospital', {
-            templateUrl: 'views/dashboard/statistics/statistics-hospital.html',
-            url: '/statistics-hospital'
-        })
-        .state('dashboard.statistics-others', {
-            templateUrl: 'views/dashboard/statistics/statistics-others.html',
-            url: '/statistics-others'
-        })
-
-        //系统管理
-        .state('dashboard.system-employee', {
-            templateUrl: 'views/dashboard/system/employee-manage.html',
-            url: '/system-employee'
-        })
-        .state('dashboard.system-hospital', {
-            templateUrl: 'views/dashboard/system/hospital-manage.html',
-            url: '/system-hospital'
-        })
-        .state('dashboard.system-office', {
-            templateUrl: 'views/dashboard/system/office-manage.html',
-            url: '/system-office'
-        })
-        .state('dashboard.custom-report', {
-            templateUrl: 'views/dashboard/system/custom-report.html',
-            url: '/custom-report'
-        })
-
         //登录
         .state('login', {
             templateUrl: 'views/pages/login.html',
             url: '/login',
-            controller: 'LoginCtrl'
-        })
+            controller: 'LoginCtrl',
+            data: {
+                requireLogin: false
+            }
+        });
 
+    $httpProvider.interceptors.push(['$timeout', '$q', '$injector', 'Perference',
+        function ($timeout, $q, $injector, Perference) {
+            var $state;
 
+            $timeout(function () {
+                $state = $injector.get('$state');
+            });
+
+            return {
+                'request': function (config) {
+                    config.headers = config.headers || {};
+                    if (Perference.hasToken()) {
+                        config.headers.Authorization = 'Bearer ' + Perference.getToken();
+                    }
+                    return config;
+                },
+                'requestError': function (response) {
+                    if (response.status === 401 || response.status === 403) {
+                        Perference.deleteToken();
+                        $state.go('login');
+                    }
+                    return $q.reject(response);
+                }
+            };
+        }]);
 }
-'use strict';
-/**
- * @ngdoc function
- * @name sbAdminApp.controller:MainCtrl
- * @description
- * # MainCtrl
- * Controller of the sbAdminApp
- */
-angular.module('nicu.controllers')
-    .controller('ChartCtrl', ['$scope', '$timeout', function ($scope, $timeout) {
-        $scope.line = {
-            labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July'],
-            series: ['Series A', 'Series B'],
-            data: [
-                [65, 59, 80, 81, 56, 55, 40],
-                [28, 48, 40, 19, 86, 27, 90]
-            ],
-            onClick: function (points, evt) {
-                console.log(points, evt);
+
+angular.module('nicu').run(['$rootScope', '$state', 'Perference',
+    function ($rootScope, $state, Perference) {
+        $rootScope.$on('$stateChangeStart', function (event, toState) {
+            var requireLogin = toState.data.requireLogin;
+            //console.log('yyy: ' + toState.url);
+            if (requireLogin && !Perference.hasToken()) {
+                event.preventDefault();
+                //console.log('xxx');
+                $state.go('login');
             }
-        };
-
-        $scope.bar = {
-            labels: ['2006', '2007', '2008', '2009', '2010', '2011', '2012'],
-            series: ['Series A', 'Series B'],
-
-            data: [
-                [65, 59, 80, 81, 56, 55, 40],
-                [28, 48, 40, 19, 86, 27, 90]
-            ]
-
-        };
-
-        $scope.donut = {
-            labels: ["Download Sales", "In-Store Sales", "Mail-Order Sales"],
-            data: [300, 500, 100]
-        };
-
-        $scope.radar = {
-            labels:["Eating", "Drinking", "Sleeping", "Designing", "Coding", "Cycling", "Running"],
-
-            data:[
-                [65, 59, 90, 81, 56, 55, 40],
-                [28, 48, 40, 19, 96, 27, 100]
-            ]
-        };
-
-        $scope.pie = {
-            labels : ["Download Sales", "In-Store Sales", "Mail-Order Sales"],
-            data : [300, 500, 100]
-        };
-
-        $scope.polar = {
-            labels : ["Download Sales", "In-Store Sales", "Mail-Order Sales", "Tele Sales", "Corporate Sales"],
-            data : [300, 500, 100, 40, 120]
-        };
-
-        $scope.dynamic = {
-            labels : ["Download Sales", "In-Store Sales", "Mail-Order Sales", "Tele Sales", "Corporate Sales"],
-            data : [300, 500, 100, 40, 120],
-            type : 'PolarArea',
-
-            toggle : function ()
-            {
-                this.type = this.type === 'PolarArea' ?
-                    'Pie' : 'PolarArea';
-            }
-        };
+        });
     }]);
 'use strict';
 
@@ -251,17 +138,36 @@ function HomeCtrl($scope, $location, $filter, NgTableParams) {
 'use strict';
 
 angular.module('nicu.controllers')
-    .controller('LoginCtrl', ['$scope', 'Nodes', LoginCtrl]);
+    .controller('LoginCtrl', ['$scope', '$state', 'toaster',
+        'Nodes', 'Auth', 'Perference', LoginCtrl]);
+//$sessionStorage
+function LoginCtrl($scope, $state, toaster, Nodes, Auth, Perference) {
+    function successAuth(data) {
+        Perference.setToken(data.token, $scope.auto_login);
+        Perference.setUser($scope.user);
+        $state.go('app.home');
+    }
 
-function LoginCtrl($scope, Nodes) {
-    $scope.user = {};
+    $scope.auto_login = Perference.isAutoLogin();
+    $scope.user = Perference.getUser();
+
     $scope.nodes = Nodes.query(function () {
-        $scope.user.node = $scope.nodes[0];
+        if ($scope.user.node == null) {
+            $scope.user.node = $scope.nodes[0];
+        }
     });
 
-    $scope.loginForm = function() {
+    $scope.loginForm = function () {
         if ($scope.login_form.$valid) {
-            alert('你的login： name = ' + $scope.user.username + ', password = ' + $scope.user.password );
+            //alert('你的login： name = ' + $scope.user.username + ', password = ' + $scope.user.password +
+            //', node = ' + $scope.user.node.id);
+            Auth.login($scope.user, successAuth, function (data, status) {
+                if (status == 401) {
+                    toaster.pop('error', '用户名或密码错误', '');
+                } else if (status == 500) {
+                    toaster.pop('error', '服务器错误', '');
+                }
+            });
         } else {
             $scope.login_form.submitted = true;
         }
@@ -277,8 +183,39 @@ function LoginCtrl($scope, Nodes) {
  * Controller of the sbAdminApp
  */
 angular.module('nicu.controllers')
-    .controller('MainCtrl', function ($scope, $position) {
-    });
+    .controller('MainCtrl', ['$scope', MainCtrl]);
+
+function MainCtrl($scope) {
+
+
+}
+'use strict';
+
+angular.module('nicu.services')
+    .factory('Auth', ['$http', 'urls', 'Perference', authService]);
+
+function authService($http, urls, Perference) {
+    return {
+        register: function (data, success, error) {
+            $http.post(urls.BASE + '/auth/register', data).success(success).error(error)
+        },
+        login: function (data, success, error) {
+            $http.post(urls.BASE + '/auth/login', data).success(success).error(error)
+        },
+        logout: function (success) {
+            Perference.deleteToken();
+            success();
+        }
+    };
+}
+'use strict';
+
+angular.module('nicu.services')
+    .factory('Category', ['$resource', categoryService]);
+
+function categoryService($resource) {
+    return $resource('/api/v1/categories/:id');
+}
 'use strict';
 
 angular.module('nicu.services')
@@ -287,6 +224,295 @@ angular.module('nicu.services')
 function nodeService($resource) {
     return $resource('/api/v1/nodes/:id');
 }
+'use strict';
+
+angular.module('nicu.services')
+    .factory('Perference', ['$sessionStorage', '$localStorage', perferenceService]);
+
+function perferenceService($sessionStorage, $localStorage) {
+    return {
+        setUser: function (user) {
+            $localStorage.user = {username: user.username, node: user.node};
+        },
+        getUser: function () {
+            return $localStorage.user == null ? {} : $localStorage.user;
+        },
+
+        isAutoLogin: function () {
+            return $localStorage.auto_login;
+        },
+        setToken: function (token, auto_login) {
+            $localStorage.auto_login = auto_login;
+            if (auto_login) {
+                $localStorage.token = token;
+            } else {
+                $sessionStorage.token = token;
+            }
+        },
+        getToken: function () {
+            var auto_login = $localStorage.auto_login;
+            if (auto_login) {
+                return $localStorage.token;
+            } else {
+                return $sessionStorage.token;
+            }
+        },
+        hasToken: function () {
+            var token;
+            var auto_login = $localStorage.auto_login;
+            if (auto_login) {
+                token = $localStorage.token;
+            } else {
+                token = $sessionStorage.token;
+            }
+            return token != null;
+        },
+        deleteToken: function (success) {
+            delete $localStorage.token;
+            delete $sessionStorage.token;
+        }
+    };
+}
+'use strict';
+
+angular.module('nicu.services')
+    .factory('Permission', ['$resource', permService]);
+
+function permService($resource) {
+    return $resource('/api/v1/permissions/:id');
+}
+'use strict';
+
+angular.module('nicu.services')
+    .provider('runtimeRoutes', ['$stateProvider', runtimeRoutes]);
+
+function runtimeRoutes($stateProvider) {
+    this.$get = function () {
+        return {
+            add: function (route) {
+                $stateProvider.state(route.state, {
+                    url: route.url,
+                    templateUrl: route.templateUrl,
+                    controller: route.controller
+                });
+            }
+        }
+    }
+}
+'use strict';
+
+angular.module('nicu.controllers')
+    .controller('WorkloadCtrl', ['$scope', WorkloadCtrl]);
+
+function WorkloadCtrl($scope) {
+
+}
+
+
+'use strict';
+
+angular.module('nicu.controllers')
+    .controller('EmployeeInfoCtrl', ['$scope', EmployeeInfoCtrl]);
+
+function EmployeeInfoCtrl($scope) {
+
+}
+
+
+'use strict';
+
+angular.module('nicu.controllers')
+    .controller('LeaveVerifyCtrl', ['$scope', LeaveVerifyCtrl]);
+
+function LeaveVerifyCtrl($scope) {
+
+}
+
+
+'use strict';
+
+angular.module('nicu.controllers')
+    .controller('OfficeNotifyCtrl', ['$scope', OfficeNotifyCtrl]);
+
+function OfficeNotifyCtrl($scope) {
+
+}
+
+
+'use strict';
+
+angular.module('nicu.controllers')
+    .controller('PerManageCtrl', ['$scope', PerManageCtrl]);
+
+function PerManageCtrl($scope) {
+
+}
+
+
+'use strict';
+
+angular.module('nicu.controllers')
+    .controller('PerVerifyCtrl', ['$scope', PerVerifyCtrl]);
+
+function PerVerifyCtrl($scope) {
+
+}
+
+
+'use strict';
+
+angular.module('nicu.controllers')
+    .controller('PatientsDetailCtrl', ['$scope', PatientsDetailCtrl]);
+
+function PatientsDetailCtrl($scope) {
+
+}
+
+
+'use strict';
+
+angular.module('nicu.controllers')
+    .controller('PatientsInCtrl', ['$scope', PatientsInCtrl]);
+
+function PatientsInCtrl($scope) {
+
+}
+'use strict';
+
+angular.module('nicu.controllers')
+    .controller('PatientsOutCtrl', ['$scope', PatientsOutCtrl]);
+
+function PatientsOutCtrl($scope) {
+
+}
+'use strict';
+
+angular.module('nicu.controllers')
+    .controller('PatientsRegCtrl', ['$scope', PatientsRegCtrl]);
+
+function PatientsRegCtrl($scope) {
+
+}
+'use strict';
+
+angular.module('nicu.controllers')
+    .controller('PatientsReportCtrl', ['$scope', PatientsReportCtrl]);
+
+function PatientsReportCtrl($scope) {
+
+}
+
+
+'use strict';
+
+angular.module('nicu.controllers')
+    .controller('UserAsk4leaveCtrl', ['$scope', UserAsk4leaveCtrl]);
+
+function UserAsk4leaveCtrl($scope) {
+
+}
+
+
+'use strict';
+
+angular.module('nicu.controllers')
+    .controller('UserNotifyCtrl', ['$scope', UserNotifyCtrl]);
+
+function UserNotifyCtrl($scope) {
+
+}
+
+
+'use strict';
+
+angular.module('nicu.controllers')
+    .controller('UserPerCtrl', ['$scope', UserPerCtrl]);
+
+function UserPerCtrl($scope) {
+
+}
+
+
+'use strict';
+
+angular.module('nicu.controllers')
+    .controller('UserProfileCtrl', ['$scope', UserProfileCtrl]);
+
+function UserProfileCtrl($scope) {
+
+}
+
+
+'use strict';
+
+angular.module('nicu.controllers')
+    .controller('RemoteApplyCtrl', ['$scope', RemoteApplyCtrl]);
+
+function RemoteApplyCtrl($scope) {
+
+}
+
+
+'use strict';
+
+angular.module('nicu.controllers')
+    .controller('RemoteVerifyCtrl', ['$scope', RemoteVerifyCtrl]);
+
+function RemoteVerifyCtrl($scope) {
+
+}
+
+
+'use strict';
+
+angular.module('nicu.controllers')
+    .controller('BasicCtrl', ['$scope', BasicCtrl]);
+
+function BasicCtrl($scope) {
+
+}
+
+
+'use strict';
+
+angular.module('nicu.controllers')
+    .controller('CustomReportCtrl', ['$scope', CustomReportCtrl]);
+
+function CustomReportCtrl($scope) {
+
+}
+
+
+'use strict';
+
+angular.module('nicu.controllers')
+    .controller('EmployeeCtrl', ['$scope', EmployeeCtrl]);
+
+function EmployeeCtrl($scope) {
+
+}
+
+
+'use strict';
+
+angular.module('nicu.controllers')
+    .controller('OfficeCtrl', ['$scope', OfficeCtrl]);
+
+function OfficeCtrl($scope) {
+
+}
+
+
+'use strict';
+
+angular.module('nicu.controllers')
+    .controller('QualityCtrl', ['$scope', QualityCtrl]);
+
+function QualityCtrl($scope) {
+
+}
+
+
 'use strict';
 
 /**
@@ -350,34 +576,33 @@ angular.module('nicu.directives')
             restrict: 'E',
             replace: true,
             scope: {},
-            controller: function ($scope) {
+            controller: function ($scope, runtimeRoutes, Category) {
                 $scope.collapseVar = 0;
-                $scope.lastCollapseVar = 0;
-                $scope.multiCollapseVar = 0;
-
                 $scope.check = function (x) {
-                    $scope.collapseVar = x;
-                    $scope.lastCollapseVar = x;
-                };
-
-                $scope.expansion = function (x) {
-                    $scope.collapseVar = x;
-                };
-
-                $scope.collapse = function ($event) {
-                    if (!$event.currentTarget.querySelector('.active')) {
-                        $scope.collapseVar = $scope.lastCollapseVar;
+                    if (x == $scope.collapseVar) {
+                        $scope.collapseVar = 0;
                     } else {
-                        $scope.lastCollapseVar = $scope.collapseVar;
+                        $scope.collapseVar = x;
                     }
                 };
 
-                $scope.multiCheck = function (y) {
-                    if (y == $scope.multiCollapseVar)
-                        $scope.multiCollapseVar = 0;
-                    else
-                        $scope.multiCollapseVar = y;
-                };
+                console.log('sidebar...');
+                $scope.loadRoutes = function (nodes) {
+                    for (var i = 0; i < nodes.length; i++) {
+                        var node = nodes[i];
+                        if (node.route) {
+                            runtimeRoutes.add(node.route);
+                        }
+                        if (node.children && node.children.length > 0) {
+                            $scope.loadRoutes(node.children);
+                        }
+                    }
+                }
+
+                $scope.category = Category.get({id: 1}, function () {
+                    $scope.loadRoutes($scope.category[1].children);
+                });
+
             }
         }
     }]);
@@ -479,7 +704,6 @@ angular.module('nicu.directives')
                             });
                         }
                     });
-                    console.log('hello');
                     def.resolve(filer);
                     return def;
                 };
@@ -540,10 +764,19 @@ angular.module('nicu.directives')
  */
 angular.module('nicu.directives')
     .directive('headerNotification',function(){
+        var controller = ['$scope', '$state', 'Auth', function ($scope, $state, Auth) {
+            $scope.logout = function () {
+                Auth.logout(function () {
+                    $state.go('login');
+                });
+            };
+        }];
+
         return {
             templateUrl:'scripts/directives/header/header-notification/header-notification.html',
             restrict: 'E',
-            replace: true
+            replace: true,
+            controller: controller
         }
     });
 

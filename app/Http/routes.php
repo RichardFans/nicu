@@ -28,6 +28,11 @@ Route::group(['prefix' => 'api', 'middleware' => 'switch_node_db'], function () 
             Route::resource('users', 'Api\V1\UserController',
                 ['only' => ['index', 'store', 'show', 'update', 'destroy']]);
 
+            Route::resource('categories', 'Api\V1\CategoryController',
+                ['only' => ['show']]);
+
+            Route::resource('permissions', 'Api\V1\PermissionController',
+                ['only' => ['show']]);
         });
 
         Route::resource('nodes', 'Api\V1\NodeController',

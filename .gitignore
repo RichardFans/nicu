@@ -2,3 +2,4 @@
 /node_modules
 /resources/assets/vendor/
 .env.example
+_ide_helper.php

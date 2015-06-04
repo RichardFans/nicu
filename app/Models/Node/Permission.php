@@ -14,4 +14,11 @@ use Zizaco\Entrust\EntrustPermission;
 class Permission extends EntrustPermission
 {
     protected $connection = 'node';
+
+    protected $visible = ['id', 'display_name', 'description'];
+
+    public function category()
+    {
+        return $this->hasOne('App\Models\Node\Category');
+    }
 }

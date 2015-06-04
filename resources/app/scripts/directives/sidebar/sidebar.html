@@ -3,124 +3,22 @@
         <ul class="nav in" id="side-menu">
             <sidebar-search></sidebar-search>
             <li ui-sref-active="active" ng-click="check(0)">
-                <a ui-sref="dashboard.home"><i class="fa fa-home fa-fw"></i> 首页</a>
-            </li>
-            <li ng-class="{active: collapseVar==1 || lastCollapseVar==1}" ng-mouseover="expansion(1)"
-                ng-mouseleave="collapse($event)">
-
-                <a href=""><i class="fa fa-bed fa-fw"></i> 病人管理<span
-                        class="fa arrow"></span></a>
-                <ul class="nav nav-second-level" collapse="collapseVar!=1 && lastCollapseVar!=1">
-                    <li ui-sref-active="active">
-                        <a ui-sref="dashboard.patient-registration">入院登记</a>
-                    </li>
-                    <li ui-sref-active="active">
-                        <a ui-sref="dashboard.hospitalized-patients-manage">住院管理</a>
-                    </li>
-                    <li ui-sref-active="active">
-                        <a ui-sref="dashboard.patients-info">信息管理</a>
-                    </li>
-                    <li ui-sref-active="active">
-                        <a ui-sref="dashboard.work-report">工作报表</a>
-                    </li>
-                </ul>
+                <a ui-sref="app.home"><i class="fa fa-home fa-fw"></i> 首页</a>
             </li>
 
-            <li ng-class="{active: collapseVar==2 || lastCollapseVar==2}" ng-mouseover="expansion(2)"
-                ng-mouseleave="collapse($event)">
-
-                <a href=""><i class="fa fa-hospital-o fa-fw"></i> 远程医疗<span
-                        class="fa arrow"></span></a>
-                <ul class="nav nav-second-level" collapse="collapseVar!=2 && lastCollapseVar!=2">
-                    <li ui-sref-active="active">
-                        <a ui-sref="dashboard.remote-transfer">转院申请</a>
-                    </li>
-                    <li ui-sref-active="active">
-                        <a ui-sref="dashboard.remote-evaluate">转院申请审核</a>
-                    </li>
-                    <br><br>
-                    <br><br>
-                </ul>
-            </li>
-
-            <li ng-class="{active: collapseVar==3 || lastCollapseVar==3}"
-                ng-mouseover="expansion(3)" ng-mouseleave="collapse($event)">
-                <a href=""><i class="fa fa-user fa-fw"></i> 用户中心<span
-                        class="fa arrow"></span></a>
-                <ul class="nav nav-second-level" collapse="collapseVar!=3 && lastCollapseVar!=3">
-                    <li ui-sref-active="active">
-                        <a ui-sref="dashboard.user-profile">个人资料</a>
-                    </li>
-                    <li ui-sref-active="active">
-                        <a ui-sref="dashboard.user-ask4leave">请假申请与查询</a>
-                    </li>
-                    <li ui-sref-active="active">
-                        <a ui-sref="dashboard.user-notification">个人通知</a>
-                    </li>
-                    <li ui-sref-active="active">
-                        <a ui-sref="dashboard.user-performance">个人绩效</a>
+            <li ng-repeat="node in category[1].children"
+                ng-class="{active: collapseVar==$index+1}">
+                <a ng-click="check($index+1)">
+                    <i ng-class="['fa', 'fa-' + node.icon, 'fa-fw']"></i>
+                    {{node.display_name}}
+                    <span class="fa arrow"></span>
+                </a>
+                <ul class="nav nav-second-level" collapse="collapseVar != ($index+1)">
+                    <li ng-repeat="subNode in node.children"
+                        ui-sref-active="active">
+                        <a ui-sref="{{subNode.route.state}}">{{subNode.display_name}}</a>
                     </li>
                 </ul>
-            </li>
-
-            <li ng-class="{active: collapseVar==4 || lastCollapseVar==4}"
-                ng-mouseover="expansion(4)" ng-mouseleave="collapse($event)">
-                <a href=""><i class="fa fa-suitcase fa-fw"></i> 科室办公<span
-                        class="fa arrow"></span></a>
-                <ul class="nav nav-second-level" collapse="collapseVar!=4 && lastCollapseVar!=4">
-                    <li ui-sref-active="active">
-                        <a ui-sref="dashboard.office-ask4leave">请假审核</a>
-                    </li>
-                    <li ui-sref-active="active">
-                        <a ui-sref="dashboard.office-notification">科室通知</a>
-                    </li>
-                    <li ui-sref-active="active">
-                        <a ui-sref="dashboard.office-performance">绩效审核</a>
-                    </li>
-                    <li ui-sref-active="active">
-                        <a ui-sref="dashboard.office-employee-info">员工信息</a>
-                    </li>
-                </ul>
-            </li>
-
-            <li ng-class="{active: collapseVar==5 || lastCollapseVar==5}"
-                ng-mouseover="expansion(5)" ng-mouseleave="collapse($event)">
-                <a href=""><i class="fa fa-bar-chart fa-fw"></i> 统计分析<span
-                        class="fa arrow"></span></a>
-                <ul class="nav nav-second-level" collapse="collapseVar!=5  && lastCollapseVar!=5">
-                    <li ui-sref-active="active">
-                        <a ui-sref="dashboard.statistics-quality">质控信息统计</a>
-                    </li>
-                    <li ui-sref-active="active">
-                        <a ui-sref="dashboard.statistics-hospital">住院病人统计</a>
-                    </li>
-                    <li ui-sref-active="active">
-                        <a ui-sref="dashboard.statistics-others">其他数据统计</a>
-                    </li>
-                    <br><br>
-                </ul>
-                <!-- /.nav-second-level -->
-            </li>
-
-            <li ng-class="{active: collapseVar==6 || lastCollapseVar==6}"
-                ng-mouseover="expansion(6)" ng-mouseleave="collapse($event)">
-                <a href=""><i class="fa fa-cogs fa-fw"></i> 系统管理<span
-                        class="fa arrow"></span></a>
-                <ul class="nav nav-second-level" collapse="collapseVar!=6  && lastCollapseVar!=6">
-                    <li ui-sref-active="active">
-                        <a ui-sref="dashboard.system-employee">员工管理</a>
-                    </li>
-                    <li ui-sref-active="active">
-                        <a ui-sref="dashboard.system-hospital">住院管理</a>
-                    </li>
-                    <li ui-sref-active="active">
-                        <a ui-sref="dashboard.system-office">办公管理</a>
-                    </li>
-                    <li ui-sref-active="active">
-                        <a ui-sref="dashboard.custom-report">自定义报表</a>
-                    </li>
-                </ul>
-                <!-- /.nav-second-level -->
             </li>
 
         </ul>

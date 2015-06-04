@@ -44,6 +44,8 @@ class DatabaseSeeder extends Seeder
             }
             $this->call('UserTableSeeder');
             $this->call('RoleTableSeeder');
+            $this->call('RouteTableSeeder');
+            $this->call('CategoryTableSeeder');
         }
 
     }

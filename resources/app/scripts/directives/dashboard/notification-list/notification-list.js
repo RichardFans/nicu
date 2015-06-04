@@ -96,7 +96,6 @@ angular.module('nicu.directives')
                             });
                         }
                     });
-                    console.log('hello');
                     def.resolve(filer);
                     return def;
                 };

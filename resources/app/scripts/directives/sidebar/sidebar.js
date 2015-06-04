@@ -14,34 +14,33 @@ angular.module('nicu.directives')
             restrict: 'E',
             replace: true,
             scope: {},
-            controller: function ($scope) {
+            controller: function ($scope, runtimeRoutes, Category) {
                 $scope.collapseVar = 0;
-                $scope.lastCollapseVar = 0;
-                $scope.multiCollapseVar = 0;
-
                 $scope.check = function (x) {
-                    $scope.collapseVar = x;
-                    $scope.lastCollapseVar = x;
-                };
-
-                $scope.expansion = function (x) {
-                    $scope.collapseVar = x;
-                };
-
-                $scope.collapse = function ($event) {
-                    if (!$event.currentTarget.querySelector('.active')) {
-                        $scope.collapseVar = $scope.lastCollapseVar;
+                    if (x == $scope.collapseVar) {
+                        $scope.collapseVar = 0;
                     } else {
-                        $scope.lastCollapseVar = $scope.collapseVar;
+                        $scope.collapseVar = x;
                     }
                 };
 
-                $scope.multiCheck = function (y) {
-                    if (y == $scope.multiCollapseVar)
-                        $scope.multiCollapseVar = 0;
-                    else
-                        $scope.multiCollapseVar = y;
-                };
+                console.log('sidebar...');
+                $scope.loadRoutes = function (nodes) {
+                    for (var i = 0; i < nodes.length; i++) {
+                        var node = nodes[i];
+                        if (node.route) {
+                            runtimeRoutes.add(node.route);
+                        }
+                        if (node.children && node.children.length > 0) {
+                            $scope.loadRoutes(node.children);
+                        }
+                    }
+                }
+
+                $scope.category = Category.get({id: 1}, function () {
+                    $scope.loadRoutes($scope.category[1].children);
+                });
+
             }
         }
     }]);

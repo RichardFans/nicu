@@ -24,97 +24,54 @@ class RoleTableSeeder extends Seeder
 
         $permissions = array(
             //根权限
-            ['name' => 'app', 'display_name' => '使用NICU的权限'],//id == 1
+            ['name' => 'app', 'display_name' => '根权限'],//id == 1
 
             //  一级权限
             ['name' => 'app.patients', 'display_name' => '病人管理'],//2
-
+            //      二级权限
             ['name' => 'app.patients.reg', 'display_name' => '入科登记'],//3
-            ['name' => 'app.patients.reg.new', 'display_name' => '新入病人登记'],//4
-            ['name' => 'app.patients.reg.return', 'display_name' => '出院病人重新转入'],//5
-
-            ['name' => 'app.patients.in_hospital', 'display_name' => '在科病人'],//6
-            ['name' => 'app.patients.in_hospital.bed', 'display_name' => '病人与床位'],//7
-            ['name' => 'app.patients.in_hospital.detail', 'display_name' => '在院明细'],//8
-
-            ['name' => 'app.patients.leave', 'display_name' => '出科病人'],//9
-            ['name' => 'app.patients.leave.info', 'display_name' => '出科病人信息'],//10
-            ['name' => 'app.patients.leave.report', 'display_name' => '补打报表'],//11
-
-            ['name' => 'app.patients.report', 'display_name' => '工作报表'],//12
-            ['name' => 'app.patients.report.shift', 'display_name' => '交班报表'],//13
-            ['name' => 'app.patients.report.daily', 'display_name' => '日报表'],//14
-            ['name' => 'app.patients.report.apache', 'display_name' => 'ApacheII评分月报表'],//15
-            ['name' => 'app.patients.report.critical_care', 'display_name' => '危重护理'],//16
+            ['name' => 'app.patients.in_hospital', 'display_name' => '在科病人'],//4
+            ['name' => 'app.patients.clinical_report', 'display_name' => '临床报表'],//5
+            ['name' => 'app.patients.detail', 'display_name' => '在院明细'],//6
+            ['name' => 'app.patients.leave', 'display_name' => '出科病人'],//7
 
             //  一级权限
-            ['name' => 'app.remote', 'display_name' => '远程医疗'],//17
-            ['name' => 'app.remote.apply', 'display_name' => '转院申请'],//18
-            ['name' => 'app.remote.verify', 'display_name' => '转院申请审核'],//19
+            ['name' => 'app.remote', 'display_name' => '远程医疗'],//8
+            //      二级权限
+            ['name' => 'app.remote.apply', 'display_name' => '转院申请'],//9
+            ['name' => 'app.remote.verify', 'display_name' => '转入审核'],//10
 
             //  一级权限
-            ['name' => 'app.personal', 'display_name' => '用户中心'],//20
-
-            ['name' => 'app.personal.profile', 'display_name' => '个人资料'],//21
-            ['name' => 'app.personal.profile.info', 'display_name' => '个人信息'],//22
-            ['name' => 'app.personal.profile.modify', 'display_name' => '账户修改'],//23
-
-            ['name' => 'app.personal.ask4leave', 'display_name' => '请假申请与查询'],//24
-
-            ['name' => 'app.personal.notification', 'display_name' => '个人通知'],//25
-
-            ['name' => 'app.personal.performance', 'display_name' => '个人绩效'],//26
-            ['name' => 'app.personal.performance.workload', 'display_name' => '工作量考核'],//27
-            ['name' => 'app.personal.performance.office', 'display_name' => '科室考核'],//28
+            ['name' => 'app.personal', 'display_name' => '用户中心'],//11
+            //      二级权限
+            ['name' => 'app.personal.profile', 'display_name' => '个人资料'],//12
+            ['name' => 'app.personal.ask4leave', 'display_name' => '请假申请'],//13
+            ['name' => 'app.personal.notification', 'display_name' => '个人通知'],//14
+            ['name' => 'app.personal.performance', 'display_name' => '个人绩效'],//15
 
             //  一级权限
-            ['name' => 'app.office', 'display_name' => '科室办公'],//29
-            ['name' => 'app.office.leave_verify', 'display_name' => '请假审核'],//30
-            ['name' => 'app.office.leave_verify.team_leader', 'display_name' => '组长审核'],//31
-            ['name' => 'app.office.leave_verify.office_leader', 'display_name' => '科室审核'],//32
-
-            ['name' => 'app.office.notification', 'display_name' => '科室通知'],//33
-
-            ['name' => 'app.office.performance_verify', 'display_name' => '绩效审核'],//34
-            ['name' => 'app.office.performance_verify.team_leader', 'display_name' => '组长审核'],//35
-            ['name' => 'app.office.performance_verify.office_leader', 'display_name' => '科室审核'],//36
-
-            ['name' => 'app.office.employee_info', 'display_name' => '员工信息'],//37
-            ['name' => 'app.office.employee_info.contacts', 'display_name' => '科室通信录'],//38
-            ['name' => 'app.office.employee_info.birthday', 'display_name' => '员工生日查询'],//39
+            ['name' => 'app.office', 'display_name' => '科室办公'],//16
+            //      二级权限
+            ['name' => 'app.office.leave_verify', 'display_name' => '请假审核'],//17
+            ['name' => 'app.office.performance_verify', 'display_name' => '绩效审核'],//18
+            ['name' => 'app.office.notification', 'display_name' => '科室通知'],//19
+            ['name' => 'app.office.change_workload', 'display_name' => '工作量更改'],//20
+            ['name' => 'app.office.performance_manage', 'display_name' => '绩效管理'],//21
+            ['name' => 'app.office.employee_info', 'display_name' => '员工信息'],//22
 
             //  一级权限
-            ['name' => 'app.statistics', 'display_name' => '统计分析'],//40
-            ['name' => 'app.statistics.quality', 'display_name' => '质控信息统计'],//41
-            ['name' => 'app.statistics.hospital', 'display_name' => '住院数据统计'],//42
-            ['name' => 'app.statistics.others', 'display_name' => '其他数据统计'],//43
+            ['name' => 'app.statistics', 'display_name' => '统计分析'],//23
+            //      二级权限
+            ['name' => 'app.statistics.quality', 'display_name' => '质控指标'],//24
+
 
             //  一级权限
-            ['name' => 'app.setting', 'display_name' => '系统管理'],//44
-
-            ['name' => 'app.setting.employee', 'display_name' => '员工管理'],//45
-            ['name' => 'app.setting.employee.type', 'display_name' => '员工分类'],//46
-            ['name' => 'app.setting.employee.role', 'display_name' => '员工角色'],//47
-            ['name' => 'app.setting.employee.info', 'display_name' => '员工信息'],//48
-
-            ['name' => 'app.setting.hospital', 'display_name' => '住院管理'],//49
-            ['name' => 'app.setting.hospital.ward', 'display_name' => '病区管理'],//50
-            ['name' => 'app.setting.hospital.bed', 'display_name' => '床位管理'],//51
-            ['name' => 'app.setting.hospital.bed_type', 'display_name' => '床位类型管理'],//52
-            ['name' => 'app.setting.hospital.diagnosis.', 'display_name' => '常用诊断管理'],//53
-            ['name' => 'app.setting.hospital.src_ward', 'display_name' => '来源病区管理'],//54
-            ['name' => 'app.setting.hospital.in_type', 'display_name' => '转入类型管理'],//55
-            ['name' => 'app.setting.hospital.pathogens', 'display_name' => '常见病原管理'],//56
-            ['name' => 'app.setting.hospital.specimen_type', 'display_name' => '标本类型管理'],//57
-            ['name' => 'app.setting.hospital.fixed_diagnosis', 'display_name' => '固定诊疗管理'],//58
-            ['name' => 'app.setting.hospital.custom_diagnosis', 'display_name' => '自定义诊疗项目'],//59
-
-            ['name' => 'app.setting.office', 'display_name' => '办公管理'],//60
-            ['name' => 'app.setting.office.adverse_events', 'display_name' => '医疗不良事件'],//61
-            ['name' => 'app.setting.office.notification_type', 'display_name' => '通知类型'],//62
-            ['name' => 'app.setting.office.verify_type', 'display_name' => '考核类型'],//63
-
-            ['name' => 'app.setting.custom_report', 'display_name' => '自定义报表'],//64
+            ['name' => 'app.setting', 'display_name' => '系统管理'],//25
+            //      二级权限
+            ['name' => 'app.setting.employee', 'display_name' => '员工管理'],//26
+            ['name' => 'app.setting.basic', 'display_name' => '基础设置'],//27
+            ['name' => 'app.setting.office', 'display_name' => '办公设置'],//28
+            ['name' => 'app.setting.custom_report', 'display_name' => '自定义报表'],//29
 
         );
 
@@ -124,9 +81,7 @@ class RoleTableSeeder extends Seeder
         }
 
         TestHelper::start();
-//        foreach ($permissions as $permission) {
-//            Permission::create($permission);
-//        }
+
         Permission::insert($permissions);
         TestHelper::end($this->command, 'permissions create');
 
@@ -134,7 +89,6 @@ class RoleTableSeeder extends Seeder
 
         ////////////////////////////////////////////////////////////////////////////////////////////
         $this->command->info('  roles...');
-//        DB::table('roles')->delete();
         Role::truncate();
         DB::table('permission_role')->truncate();
         DB::table('role_user')->truncate();
@@ -152,9 +106,6 @@ class RoleTableSeeder extends Seeder
         }
 
         TestHelper::start();
-//        foreach ($roles as $role) {
-//            Role::create($role);
-//        }
         Role::insert($roles);
         TestHelper::end($this->command, 'roles create');
 
@@ -164,18 +115,15 @@ class RoleTableSeeder extends Seeder
         $roles->get(0)->attachPermissions($permissions);
 
         //科室主任用户
-        $roles->get(1)->attachPermissions($permissions->slice(0, 30)
-            ->merge($permissions->slice(32, 34))
-            ->merge($permissions->slice(36, 42)));
+        $roles->get(1)->attachPermissions($permissions->slice(0, 24));
 
         //组长用户
-        $roles->get(2)->attachPermissions($permissions->slice(0, 31)
-            ->merge($permissions->slice(33, 35))
-            ->merge($permissions->slice(37, 42)));
+        $roles->get(2)->attachPermissions($permissions->slice(0, 19)
+            ->merge($permissions->slice(21, 3)));
 
         //普通员工
-        $roles->get(3)->attachPermissions($permissions->slice(0, 28)
-            ->merge($permissions->slice(36, 43)));
+        $roles->get(3)->attachPermissions($permissions->slice(0, 16)
+            ->merge($permissions->slice(21, 1)));
 
         TestHelper::end($this->command, 'roles attachPermissions');
         ////////////////////////////////////////////////////////////////////////////////////////////

@@ -104,7 +104,7 @@ function MainRouter($stateProvider, $urlRouterProvider, $httpProvider) {
                     }
                     return config;
                 },
-                'requestError': function (response) {
+                'responseError': function (response) {
                     if (response.status === 401 || response.status === 403) {
                         Perference.deleteToken();
                         $state.go('login');
@@ -227,10 +227,55 @@ function nodeService($resource) {
 'use strict';
 
 angular.module('nicu.services')
-    .factory('Perference', ['$sessionStorage', '$localStorage', perferenceService]);
+    .factory('Perference', ['$q', '$sessionStorage', '$localStorage', perferenceService]);
 
-function perferenceService($sessionStorage, $localStorage) {
+function perferenceService($q, $sessionStorage, $localStorage) {
+    var inArray = function (val, arr) {
+            var i = arr.length;
+            while (i--) {
+                if (angular.equals(val, arr[i])) return i;
+            }
+            return -1
+        };
+
     return {
+        inArray: inArray,
+        getSelectOptions: function (items, id, name, nameKey, addNull) {
+            var arr = [],
+                filer = [];
+            if (typeof(nameKey) === 'undefined') {
+                nameKey = 'name';
+            }
+            if (addNull) {
+                filer.unshift({title: '-', id: ''});
+            }
+            angular.forEach(items, function (item) {
+                if (inArray(item[id], arr) === -1) {
+                    arr.push(item[id]);
+                    e = {'id': item[id]};
+                    e[nameKey] = item[name];
+                    filer.push(e);
+                }
+            });
+            return filer;
+        },
+        except: function (exceptId, items) {
+            var itemsExp = [];
+            angular.forEach(items, function (item) {
+                if (exceptId != item.id) {
+                    itemsExp.push(item);
+                }
+            });
+            return itemsExp;
+        },
+        getItem: function (id, items) {
+            var i = items.length;
+            while (i--) {
+                if (items[i].id == id)
+                    return items[i];
+            }
+            return null;
+        },
         setUser: function (user) {
             $localStorage.user = {username: user.username, node: user.node};
         },
@@ -298,6 +343,18 @@ function runtimeRoutes($stateProvider) {
             }
         }
     }
+}
+'use strict';
+
+angular.module('nicu.services')
+    .factory('UserType', ['$resource', userTypeService]);
+
+function userTypeService($resource) {
+    return $resource('/api/v1/user_types/:id', {}, {
+        update: {
+            method: 'PUT'
+        }
+    });
 }
 'use strict';
 
@@ -486,10 +543,19 @@ function CustomReportCtrl($scope) {
 'use strict';
 
 angular.module('nicu.controllers')
-    .controller('EmployeeCtrl', ['$scope', EmployeeCtrl]);
+    .controller('EmployeeCtrl', ['$scope', '$window', EmployeeCtrl]);
 
-function EmployeeCtrl($scope) {
+function EmployeeCtrl($scope, $window) {
+    $scope.tabs = [
+        { title:'Dynamic Title 1', content:'Dynamic content 1' },
+        { title:'Dynamic Title 2', content:'Dynamic content 2', disabled: true }
+    ];
 
+    $scope.alertMe = function() {
+        setTimeout(function() {
+            $window.alert('You\'ve selected the alert tab!');
+        });
+    };
 }
 
 
@@ -522,102 +588,9 @@ function QualityCtrl($scope) {
  * # adminPosHeader
  */
 angular.module('nicu.directives')
-    .directive('advice', function () {
-        return {
-            templateUrl: 'scripts/directives/design/advice.html',
-            restrict: 'E',
-            replace: true,
-            scope: {
-                'warning': '@',
-                'danger': '@'
-            }
-        }
-    });
-'use strict';
-
-angular.module('nicu.directives')
-    .directive('footer', function () {
-        return {
-            templateUrl: 'scripts/directives/footer/footer.html',
-            restrict: 'E',
-            replace: true
-
-        }
-    });
-'use strict';
-
-/**
- * @ngdoc directive
- * @name izzyposWebApp.directive:adminPosHeader
- * @description
- * # adminPosHeader
- */
-angular.module('nicu.directives')
-    .directive('header', function () {
-        return {
-            templateUrl: 'scripts/directives/header/header.html',
-            restrict: 'E',
-            replace: true
-        }
-    });
-'use strict';
-
-/**
- * @ngdoc directive
- * @name izzyposWebApp.directive:adminPosHeader
- * @description
- * # adminPosHeader
- */
-
-angular.module('nicu.directives')
-    .directive('sidebar', ['$location', function () {
-        return {
-            templateUrl: 'scripts/directives/sidebar/sidebar.html',
-            restrict: 'E',
-            replace: true,
-            scope: {},
-            controller: function ($scope, runtimeRoutes, Category) {
-                $scope.collapseVar = 0;
-                $scope.check = function (x) {
-                    if (x == $scope.collapseVar) {
-                        $scope.collapseVar = 0;
-                    } else {
-                        $scope.collapseVar = x;
-                    }
-                };
-
-                console.log('sidebar...');
-                $scope.loadRoutes = function (nodes) {
-                    for (var i = 0; i < nodes.length; i++) {
-                        var node = nodes[i];
-                        if (node.route) {
-                            runtimeRoutes.add(node.route);
-                        }
-                        if (node.children && node.children.length > 0) {
-                            $scope.loadRoutes(node.children);
-                        }
-                    }
-                }
-
-                $scope.category = Category.get({id: 1}, function () {
-                    $scope.loadRoutes($scope.category[1].children);
-                });
-
-            }
-        }
-    }]);
-'use strict';
-
-/**
- * @ngdoc directive
- * @name izzyposWebApp.directive:adminPosHeader
- * @description
- * # adminPosHeader
- */
-angular.module('nicu.directives')
     .directive('notificationList', function () {
-        var controller = ['$scope', '$q', '$filter', 'NgTableParams',
-            function ($scope, $q, $filter, NgTableParams) {
+        var controller = ['$scope', '$filter', 'NgTableParams', 'Perference',
+            function ($scope, $filter, NgTableParams, Perference) {
                 var data = [
                     {title: '中秋节放假通知', type: '普通消息', published_at: '2015-5-5', published_by: '王小东'},
                     {title: '习近平总书记发表重要讲话', type: '重要通知', published_at: '2015-5-1', published_by: '曾小贤'},
@@ -664,64 +637,20 @@ angular.module('nicu.directives')
                     }
                 });
 
-                var inArray = Array.prototype.indexOf ?
-                    function (val, arr) {
-                        return arr.indexOf(val)
-                    } :
-                    function (val, arr) {
-                        var i = arr.length;
-                        while (i--) {
-                            if (arr[i] === val) return i;
-                        }
-                        return -1
-                    };
-                $scope.types = function() {
-                    var def = $q.defer(),
-                        arr = [],
-                        filer = [];
-                    angular.forEach(data, function(item){
-                        if (inArray(item.type, arr) === -1) {
-                            arr.push(item.type);
-                            filer.push({
-                                'id': item.type,
-                                'title': item.type
-                            });
-                        }
-                    });
-                    def.resolve(filer);
-                    return def;
-                };
-                $scope.publishers = function() {
-                    var def = $q.defer(),
-                        arr = [],
-                        filer = [];
-                    angular.forEach(data, function(item){
-                        if (inArray(item.published_by, arr) === -1) {
-                            arr.push(item.published_by);
-                            filer.push({
-                                'id': item.published_by,
-                                'title': item.published_by
-                            });
-                        }
-                    });
-                    def.resolve(filer);
-                    return def;
-                };
+                $scope.types = Perference.getSelectOptions(data, 'type', 'type', 'title', true);
+                $scope.publishers = Perference.getSelectOptions(data, 'published_by', 'published_by', 'title', true);
 
-                $scope.show = function(title) {
+                $scope.show = function (title) {
                     alert('title: ' + title);
                 };
 
             }];
 
         return {
-            templateUrl: 'scripts/directives/dashboard/notification-list/notification-list.html',
+            templateUrl: 'scripts/directives/home/notification-list/notification-list.html',
             restrict: 'E',
             replace: true,
-            scope: {
-                //'model': '=',
-                //'comments': '@',
-            },
+            scope: {},
             controller: controller
 
         }
@@ -739,7 +668,7 @@ angular.module('nicu.directives')
 angular.module('nicu.directives')
     .directive('stats', function () {
         return {
-            templateUrl: 'scripts/directives/dashboard/stats/stats.html',
+            templateUrl: 'scripts/directives/home/stats/stats.html',
             restrict: 'E',
             replace: true,
             scope: {
@@ -763,24 +692,253 @@ angular.module('nicu.directives')
  * # adminPosHeader
  */
 angular.module('nicu.directives')
-    .directive('headerNotification',function(){
-        var controller = ['$scope', '$state', 'Auth', function ($scope, $state, Auth) {
-            $scope.logout = function () {
-                Auth.logout(function () {
-                    $state.go('login');
-                });
-            };
-        }];
-
+    .directive('advice', function () {
         return {
-            templateUrl:'scripts/directives/header/header-notification/header-notification.html',
+            templateUrl: 'scripts/directives/main/advice/advice.html',
             restrict: 'E',
             replace: true,
+            scope: {
+                'warning': '@',
+                'danger': '@'
+            }
+        }
+    });
+'use strict';
+
+/**
+ * @ngdoc directive
+ * @name izzyposWebApp.directive:adminPosHeader
+ * @description
+ * # adminPosHeader
+ */
+angular.module('nicu.directives')
+    .directive('breadcrumb', function () {
+        return {
+            templateUrl: 'scripts/directives/main/breadcrumb/breadcrumb.html',
+            restrict: 'E',
+            replace: true,
+            scope: {
+                'current': '@',
+                'parent': '@'
+            }
+        }
+    });
+'use strict';
+
+angular.module('nicu.directives')
+    .directive('footer', function () {
+        return {
+            templateUrl: 'scripts/directives/main/footer/footer.html',
+            restrict: 'E',
+            replace: true
+
+        }
+    });
+'use strict';
+
+/**
+ * @ngdoc directive
+ * @name izzyposWebApp.directive:adminPosHeader
+ * @description
+ * # adminPosHeader
+ */
+
+angular.module('nicu.directives')
+    .directive('sidebar', [ function () {
+        return {
+            templateUrl: 'scripts/directives/main/sidebar/sidebar.html',
+            restrict: 'E',
+            replace: true,
+            scope: {},
+            controller: function ($rootScope, $scope, runtimeRoutes, Category) {
+                $rootScope.collapseVar = 0;
+                $scope.check = function (x) {
+                    if (x == $rootScope.collapseVar) {
+                        $rootScope.collapseVar = 0;
+                    } else {
+                        $rootScope.collapseVar = x;
+                    }
+                };
+
+                console.log('sidebar...');
+                $scope.loadRoutes = function (nodes) {
+                    for (var i = 0; i < nodes.length; i++) {
+                        var node = nodes[i];
+                        if (node.route) {
+                            runtimeRoutes.add(node.route);
+                        }
+                        if (node.children && node.children.length > 0) {
+                            $scope.loadRoutes(node.children);
+                        }
+                    }
+                }
+
+                $scope.category = Category.get({id: 1}, function () {
+                    $scope.loadRoutes($scope.category[1].children);
+                });
+
+            }
+        }
+    }]);
+'use strict';
+
+/**
+ * @ngdoc directive
+ * @name izzyposWebApp.directive:adminPosHeader
+ * @description
+ * # adminPosHeader
+ */
+angular.module('nicu.directives')
+    .directive('header', function () {
+        return {
+            templateUrl: 'scripts/directives/main/header/header.html',
+            restrict: 'E',
+            replace: true
+        }
+    });
+'use strict';
+
+angular.module('nicu.directives')
+    .directive('userTypeList', function () {
+        var controller = ['$scope', '$modal', 'toaster', 'NgTableParams', 'UserType', 'Perference',
+            function ($scope, $modal, toaster, NgTableParams, UserType, Perference) {
+
+                $scope.tableParams = new NgTableParams({
+                    page: 1,
+                    count: 10,
+                    filter: {}
+                }, {
+                    counts: [5, 10, 15],
+                    total: 0,
+                    getData: function ($defer, params) {
+                        UserType.query(function (data) {
+                            params.total(data.length);
+
+                            $scope.parents = [{id: '0', name: '无'}];
+                            angular.forEach(data, function (item) {
+                                if (item.parent_id == 0) {
+                                    $scope.parents.push({
+                                        id: item.id,
+                                        name: item.name
+                                    });
+                                }
+                            });
+                            for (var i = 0; i < data.length; i++) {
+                                data[i].parent = Perference.getItem(data[i].parent_id, $scope.parents);
+                            }
+
+                            $defer.resolve(data.slice((params.page() - 1) * params.count(),
+                                params.page() * params.count()));
+
+                        });
+                    }
+                });
+
+                $scope.add = function () {
+                    var modalInstance = $modal.open({
+                        templateUrl: 'UserTypeDlg.html',
+                        controller: 'UserTypeDlgCtrl',
+                        resolve: {
+                            parents: function () {
+                                return $scope.parents;
+                            },
+                            toaster: function () {
+                                return toaster;
+                            }
+                        }
+                    });
+
+                    modalInstance.result.then(function (type) {
+                        UserType.save(type).$promise.then(function (success) {
+                            console.log('add success: ' + success);
+                            $scope.tableParams.reload();
+                        }, function (error) {
+                            console.log('add error: ' + error);
+                        });
+                    });
+                }
+
+                $scope.edit = function (type) {
+                    type.$edit = true;
+                    type.$nameChanged = type.name;
+                    type.$parentChanged = type.parent;
+                    $scope.parents_list = Perference.except(type.id, $scope.parents);
+                };
+
+                $scope.save = function (type, $data) {
+                    type.$edit = false;
+                    if (type.$nameChanged == "") {
+                        toaster.pop('error', '类型名称不能为空！', '');
+                    } else if (Perference.inArray(type.$parentChanged, $scope.parents) < 0) {
+                        toaster.pop('error', '无效的父类型！', '');
+                    } else if (type.name != type.$nameChanged
+                        || type.parent_id != type.$parentChanged.id) {
+
+                        if (type.parent_id == 0) {
+                            for (var i = $data.length; i--;) {
+                                if ($data[i].parent_id == type.id) {
+                                    toaster.pop('error', '只支持二级分类，但该类型包含子分类，因此不能拥有上级分类！', '');
+                                    return;
+                                }
+                            }
+                        }
+
+                        var data = {};
+                        data['name'] = type.$nameChanged;
+                        data['parent_id'] = type.$parentChanged.id;
+                        UserType.update({id: type.id}, data).$promise.then(function (success) {
+                            console.log('save success: ' + success);
+                            $scope.tableParams.reload();
+                        }, function (error) {
+                            console.log('save error: ' + error);
+                        });
+
+                    }
+                };
+
+                $scope.delete = function (type, $data) {
+                    for (var i = $data.length; i--;) {
+                        if ($data[i].parent_id == type.id) {
+                            toaster.pop('error', '无法删除包含子类型的分类！', '');
+                            return;
+                        }
+                    }
+                    UserType.delete({id: type.id}).$promise.then(function (success) {
+                        console.log('del success: ' + success);
+                        $scope.tableParams.reload();
+                    }, function (error) {
+                        console.log('del error: ' + error);
+                    });
+                };
+            }];
+
+        return {
+            templateUrl: 'scripts/directives/setting/user-type-list/user-type-list.html',
+            restrict: 'E',
+            replace: true,
+            scope: {},
             controller: controller
+
         }
     });
 
+angular.module('nicu.controllers').controller('UserTypeDlgCtrl', function ($scope, $modalInstance, toaster, parents) {
+    $scope.parents = parents;
+    $scope.type = {parent: parents[0]};
 
+    $scope.ok = function (type) {
+        if (type.name != null && type.name != "") {
+            type.parent_id = type.parent.id;
+            $modalInstance.close(type);
+        } else {
+            toaster.pop('warning', '请填写类型名称！', '');
+        }
+    };
+
+    $scope.cancel = function () {
+        $modalInstance.dismiss('cancel');
+    };
+});
 'use strict';
 
 /**
@@ -793,7 +951,7 @@ angular.module('nicu.directives')
 angular.module('nicu')
     .directive('sidebarSearch',function() {
         return {
-            templateUrl:'scripts/directives/sidebar/sidebar-search/sidebar-search.html',
+            templateUrl:'scripts/directives/main/sidebar/sidebar-search/sidebar-search.html',
             restrict: 'E',
             replace: true,
             scope: {
@@ -803,3 +961,29 @@ angular.module('nicu')
             }
         }
     });
+'use strict';
+
+/**
+ * @ngdoc directive
+ * @name izzyposWebApp.directive:adminPosHeader
+ * @description
+ * # adminPosHeader
+ */
+angular.module('nicu.directives')
+    .directive('headerNotification',function(){
+        var controller = ['$scope', '$state', 'Auth', function ($scope, $state, Auth) {
+            $scope.logout = function () {
+                Auth.logout(function () {
+                    $state.go('login');
+                });
+            };
+        }];
+
+        return {
+            templateUrl:'scripts/directives/main/header/header-notification/header-notification.html',
+            restrict: 'E',
+            replace: true,
+            controller: controller
+        }
+    });
+

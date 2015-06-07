@@ -22,9 +22,9 @@
 
         <tr ng-repeat="msg in $data" ng-click="show(msg.title)">
             <td data-title="'通知标题'" header-class="'text-left'" filter="{ 'title': 'text' }">{{msg.title}}</td>
-            <td data-title="'通知类型'" header-class="'text-left'" filter="{ 'type': 'select' }" filter-data="types()">{{msg.type}}</td>
+            <td data-title="'通知类型'" header-class="'text-left'" filter="{ 'type': 'select' }" filter-data="types">{{msg.type}}</td>
             <td data-title="'发布时间'" header-class="'text-left'" sortable="'published_at'">{{msg.published_at}}</td>
-            <td data-title="'发布人'" header-class="'text-left'" filter="{ 'published_by': 'select' }" filter-data="publishers()">
+            <td data-title="'发布人'" header-class="'text-left'" filter="{ 'published_by': 'select' }" filter-data="publishers">
                 {{msg.published_by}}
             </td>
         </tr>

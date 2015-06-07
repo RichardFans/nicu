@@ -48,7 +48,7 @@ function MainRouter($stateProvider, $urlRouterProvider, $httpProvider) {
                     }
                     return config;
                 },
-                'requestError': function (response) {
+                'responseError': function (response) {
                     if (response.status === 401 || response.status === 403) {
                         Perference.deleteToken();
                         $state.go('login');

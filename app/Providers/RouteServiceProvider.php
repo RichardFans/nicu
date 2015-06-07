@@ -24,6 +24,7 @@ class RouteServiceProvider extends ServiceProvider {
 	{
 		parent::boot($router);
 
+//        $router->model('user_types', 'App\Models\Node\UserType');
 		//
 	}
 

@@ -17,7 +17,7 @@ angular.module('nicu.directives')
         }];
 
         return {
-            templateUrl:'scripts/directives/header/header-notification/header-notification.html',
+            templateUrl:'scripts/directives/main/header/header-notification/header-notification.html',
             restrict: 'E',
             replace: true,
             controller: controller

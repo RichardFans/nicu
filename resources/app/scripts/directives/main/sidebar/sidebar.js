@@ -8,19 +8,19 @@
  */
 
 angular.module('nicu.directives')
-    .directive('sidebar', ['$location', function () {
+    .directive('sidebar', [ function () {
         return {
-            templateUrl: 'scripts/directives/sidebar/sidebar.html',
+            templateUrl: 'scripts/directives/main/sidebar/sidebar.html',
             restrict: 'E',
             replace: true,
             scope: {},
-            controller: function ($scope, runtimeRoutes, Category) {
-                $scope.collapseVar = 0;
+            controller: function ($rootScope, $scope, runtimeRoutes, Category) {
+                $rootScope.collapseVar = 0;
                 $scope.check = function (x) {
-                    if (x == $scope.collapseVar) {
-                        $scope.collapseVar = 0;
+                    if (x == $rootScope.collapseVar) {
+                        $rootScope.collapseVar = 0;
                     } else {
-                        $scope.collapseVar = x;
+                        $rootScope.collapseVar = x;
                     }
                 };
 

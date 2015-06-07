@@ -10,7 +10,7 @@
 angular.module('nicu')
     .directive('sidebarSearch',function() {
         return {
-            templateUrl:'scripts/directives/sidebar/sidebar-search/sidebar-search.html',
+            templateUrl:'scripts/directives/main/sidebar/sidebar-search/sidebar-search.html',
             restrict: 'E',
             replace: true,
             scope: {

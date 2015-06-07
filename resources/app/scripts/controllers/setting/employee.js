@@ -1,9 +1,18 @@
 'use strict';
 
 angular.module('nicu.controllers')
-    .controller('EmployeeCtrl', ['$scope', EmployeeCtrl]);
+    .controller('EmployeeCtrl', ['$scope', '$window', EmployeeCtrl]);
 
-function EmployeeCtrl($scope) {
+function EmployeeCtrl($scope, $window) {
+    $scope.tabs = [
+        { title:'Dynamic Title 1', content:'Dynamic content 1' },
+        { title:'Dynamic Title 2', content:'Dynamic content 2', disabled: true }
+    ];
 
+    $scope.alertMe = function() {
+        setTimeout(function() {
+            $window.alert('You\'ve selected the alert tab!');
+        });
+    };
 }
 

@@ -1,21 +1,27 @@
 <div class="row">
-    <div class="col-lg-12">
-        <h1 class="page-header">员工管理</h1>
-    </div>
+
+    <breadcrumb parent="系统管理" current="员工管理"></breadcrumb>
+
 
     <div class="col-lg-12">
 
-        <div class="alert alert-info">
-            <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-            <ul>
-                <li>
-                    通过多个标签页进行展示  员工分类 员工角色 和 员工信息
-                </li>
-            </ul>
-        </div>
+        <tabset justified="true">
 
-        <advice warning="在此填写一般性建议" danger="在此填写强烈要求改变的建议"/>
+            <tab heading="员工信息">
+
+
+            </tab>
+            <tab heading="员工分类">
+
+                <user-type-list></user-type-list>
+
+            </tab>
+            <tab heading="员工角色">
+
+
+            </tab>
+        </tabset>
+
     </div>
-
 
 </div>

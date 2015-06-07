@@ -9,7 +9,7 @@
 angular.module('nicu.directives')
     .directive('header', function () {
         return {
-            templateUrl: 'scripts/directives/header/header.html',
+            templateUrl: 'scripts/directives/main/header/header.html',
             restrict: 'E',
             replace: true
         }

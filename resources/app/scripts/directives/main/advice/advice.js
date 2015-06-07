@@ -9,7 +9,7 @@
 angular.module('nicu.directives')
     .directive('advice', function () {
         return {
-            templateUrl: 'scripts/directives/design/advice.html',
+            templateUrl: 'scripts/directives/main/advice/advice.html',
             restrict: 'E',
             replace: true,
             scope: {

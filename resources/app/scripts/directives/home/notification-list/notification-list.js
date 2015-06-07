@@ -8,8 +8,8 @@
  */
 angular.module('nicu.directives')
     .directive('notificationList', function () {
-        var controller = ['$scope', '$q', '$filter', 'NgTableParams',
-            function ($scope, $q, $filter, NgTableParams) {
+        var controller = ['$scope', '$filter', 'NgTableParams', 'Perference',
+            function ($scope, $filter, NgTableParams, Perference) {
                 var data = [
                     {title: '中秋节放假通知', type: '普通消息', published_at: '2015-5-5', published_by: '王小东'},
                     {title: '习近平总书记发表重要讲话', type: '重要通知', published_at: '2015-5-1', published_by: '曾小贤'},
@@ -56,64 +56,20 @@ angular.module('nicu.directives')
                     }
                 });
 
-                var inArray = Array.prototype.indexOf ?
-                    function (val, arr) {
-                        return arr.indexOf(val)
-                    } :
-                    function (val, arr) {
-                        var i = arr.length;
-                        while (i--) {
-                            if (arr[i] === val) return i;
-                        }
-                        return -1
-                    };
-                $scope.types = function() {
-                    var def = $q.defer(),
-                        arr = [],
-                        filer = [];
-                    angular.forEach(data, function(item){
-                        if (inArray(item.type, arr) === -1) {
-                            arr.push(item.type);
-                            filer.push({
-                                'id': item.type,
-                                'title': item.type
-                            });
-                        }
-                    });
-                    def.resolve(filer);
-                    return def;
-                };
-                $scope.publishers = function() {
-                    var def = $q.defer(),
-                        arr = [],
-                        filer = [];
-                    angular.forEach(data, function(item){
-                        if (inArray(item.published_by, arr) === -1) {
-                            arr.push(item.published_by);
-                            filer.push({
-                                'id': item.published_by,
-                                'title': item.published_by
-                            });
-                        }
-                    });
-                    def.resolve(filer);
-                    return def;
-                };
+                $scope.types = Perference.getSelectOptions(data, 'type', 'type', 'title', true);
+                $scope.publishers = Perference.getSelectOptions(data, 'published_by', 'published_by', 'title', true);
 
-                $scope.show = function(title) {
+                $scope.show = function (title) {
                     alert('title: ' + title);
                 };
 
             }];
 
         return {
-            templateUrl: 'scripts/directives/dashboard/notification-list/notification-list.html',
+            templateUrl: 'scripts/directives/home/notification-list/notification-list.html',
             restrict: 'E',
             replace: true,
-            scope: {
-                //'model': '=',
-                //'comments': '@',
-            },
+            scope: {},
             controller: controller
 
         }

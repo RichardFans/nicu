@@ -14,24 +14,26 @@ function perferenceService($q, $sessionStorage, $localStorage) {
 
     return {
         inArray: inArray,
-        getSelectOptions: function (items, id, name, nameKey, addNull) {
-            var arr = [],
-                filer = [];
-            if (typeof(nameKey) === 'undefined') {
-                nameKey = 'name';
+        getSelectOptions: function (items, id, name, nameKey) {
+            var def = $q.defer(),
+                arr = [],
+                data = [];
+            if (typeof(name) === 'undefined') {
+                name = id;
             }
-            if (addNull) {
-                filer.unshift({title: '-', id: ''});
+            if (typeof(nameKey) === 'undefined') {
+                nameKey = 'title';
             }
             angular.forEach(items, function (item) {
                 if (inArray(item[id], arr) === -1) {
                     arr.push(item[id]);
                     e = {'id': item[id]};
                     e[nameKey] = item[name];
-                    filer.push(e);
+                    data.push(e);
                 }
             });
-            return filer;
+            def.resolve(data);
+            return def;
         },
         except: function (exceptId, items) {
             var itemsExp = [];
@@ -42,13 +44,29 @@ function perferenceService($q, $sessionStorage, $localStorage) {
             });
             return itemsExp;
         },
-        getItem: function (id, items) {
+        getItem: function (value, items, key) {
+            if (typeof(key) === 'undefined') {
+                key = 'id';
+            }
             var i = items.length;
             while (i--) {
-                if (items[i].id == id)
+                if (items[i][key] == value)
                     return items[i];
             }
             return null;
+        },
+        getItems: function (value, items, key) {
+            if (typeof(key) === 'undefined') {
+                key = 'id';
+            }
+            var i = items.length;
+            var result = [];
+            while (i--) {
+                if (items[i][key] == value) {
+                    result.push(items[i]);
+                }
+            }
+            return result;
         },
         setUser: function (user) {
             $localStorage.user = {username: user.username, node: user.node};

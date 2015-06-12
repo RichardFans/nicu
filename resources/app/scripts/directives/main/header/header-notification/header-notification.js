@@ -8,10 +8,10 @@
  */
 angular.module('nicu.directives')
     .directive('headerNotification',function(){
-        var controller = ['$scope', '$state', 'Auth', function ($scope, $state, Auth) {
+        var controller = ['$window', '$scope', '$state', 'Auth', function ($window, $scope, $state, Auth) {
             $scope.logout = function () {
                 Auth.logout(function () {
-                    $state.go('login');
+                    $state.go('blank');
                 });
             };
         }];

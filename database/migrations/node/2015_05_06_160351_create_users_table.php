@@ -22,8 +22,9 @@ class CreateUsersTable extends Migration {
             $table->string('username', 20)->unique(); //用户名应该唯一
             $table->string('password', 60); //md5加密
 
-            $table->string('last_ip', 20);       //上次登陆ip
-            $table->timestamp('last_time');      //上次登陆时间
+            $table->string('last_ip', 20);       //上次登录ip
+            $table->timestamp('last_time');      //上次登录时间
+            $table->unsignedInteger('login_count')->default(0);      //登录次数
 
             $table->string('name', 20);
             $table->boolean('sex');     //男：true，女：false

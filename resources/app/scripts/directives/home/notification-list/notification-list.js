@@ -56,8 +56,8 @@ angular.module('nicu.directives')
                     }
                 });
 
-                $scope.types = Perference.getSelectOptions(data, 'type', 'type', 'title', true);
-                $scope.publishers = Perference.getSelectOptions(data, 'published_by', 'published_by', 'title', true);
+                $scope.types = Perference.getSelectOptions(data, 'type');
+                $scope.publishers = Perference.getSelectOptions(data, 'published_by');
 
                 $scope.show = function (title) {
                     alert('title: ' + title);

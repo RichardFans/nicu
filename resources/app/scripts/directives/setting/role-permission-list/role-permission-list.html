@@ -1,0 +1,148 @@
+<div class="panel panel-default">
+
+    <script type="text/ng-template" id="nodes_renderer.html">
+        <div ui-tree-handle class="tree-node tree-node-content">
+            <a class="btn btn-success btn-xs" ng-if="node.children && node.children.length > 0"
+               ng-click="toggle(this)">
+                <span class="glyphicon"
+                      ng-class="{'glyphicon-chevron-right': collapsed, 'glyphicon-chevron-down': !collapsed}">
+
+                </span>
+            </a>
+            {{node.permission.display_name}}
+
+            <checkbox class="pull-right btn-info" ng-model="node.is_checked" ng-change="onChange(node)">
+
+            </checkbox>
+        </div>
+        <ol ui-tree-nodes="" ng-model="node.children" ng-class="{hidden: collapsed}">
+            <li ng-repeat="node in node.children" ui-tree-node ng-include="'nodes_renderer.html'">
+            </li>
+        </ol>
+    </script>
+
+    <script type="text/ng-template" id="PermSetDlg.html">
+        <div ui-tree id="tree-root" data-drag-enabled="false">
+            <div class="modal-header dialog-header-confirm">
+                <h4 class="modal-title">设置权限
+                    <small>请勾选<strong>{{role.name}}</strong>具有的权限</small>
+                    <div class="btn-group pull-right">
+                        <button ng-click="collapsedAll? expandAll(): collapseAll(); collapsedAll =! collapsedAll"
+                                class="btn btn-primary btn-xs">
+                            {{collapsedAll?'全部展开':'全部折叠'}}
+                        </button>
+                        <button ng-click="setCheckedAll(data, !checkedAll);checkedAll=!checkedAll"
+                                class="btn btn-primary btn-xs">
+                            {{checkedAll?'全部取消':'全部选中'}}
+                        </button>
+                    </div>
+                </h4>
+            </div>
+            <div class="modal-body">
+
+                <ol ui-tree-nodes ng-model="data">
+                    <li ng-repeat="node in data" ui-tree-node ng-include="'nodes_renderer.html'"></li>
+                </ol>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" ng-click="ok(role)">确认</button>
+                <button class="btn btn-default" ng-click="cancel()">取消</button>
+            </div>
+        </div>
+
+    </script>
+
+    <script type="text/ng-template" id="RoleAddDlg.html">
+        <div class="modal-header dialog-header-confirm">
+            <button type="button" class="close" ng-click="cancel()">&times;</button>
+            <h4 class="modal-title">添加角色</h4>
+        </div>
+        <div class="modal-body">
+
+            <form name="role_form" class="form-horizontal" novalidate>
+
+                <div class="form-group">
+                    <label class="col-md-4 control-label">角色名称</label>
+
+                    <div class="col-md-6">
+                        <input type="text" class="form-control" name="name" ng-model="role.name" required/>
+                    </div>
+
+                    <div class="col-md-1" style="padding-top: 6px" ng-show="role_form.name.$dirty">
+                        <i class="fa fa-check-circle text-success"
+                           ng-show="!role_form.name.$invalid && !conflict"></i>
+                        <i class="fa fa-times-circle text-danger"
+                           ng-show="role_form.name.$invalid || conflict"></i>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-md-4 control-label">备注</label>
+
+                    <div class="col-md-6">
+                        <textarea class="form-control" rows="4" name="description" ng-model="role.description"/>
+                    </div>
+
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" ng-click="ok(role)">确认</button>
+            <button class="btn btn-default" ng-click="cancel()">取消</button>
+        </div>
+    </script>
+
+    <div class="panel-body">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <strong>员工角色列表</strong>
+
+                <div class="btn-group pull-right">
+                    <button ng-click="add()" class="btn btn-primary btn-circle">
+                        <i class="glyphicon glyphicon-plus"></i>
+                    </button>
+                    <button ng-click="tableParams.reload()" class="btn btn-default btn-circle">
+                        <i class="fa fa-refresh"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover table-row-clicked no-selection"
+                           ng-table="tableParams">
+
+                        <tr ng-repeat="role in $data" ng-dblclick="edit(role)">
+                            <td data-title="'序号'" header-class="'text-left'" width="50">
+                                {{$index+1}}
+                            </td>
+                            <td data-title="'角色名称'" header-class="'text-left'" width="28%">
+                                <span ng-if="!role.$edit">{{role.name}}</span>
+
+                                <div ng-if="role.$edit">
+                                    <input class="form-control" role="text" ng-model="role.$nameChanged"/>
+                                </div>
+                            </td>
+                            <td data-title="'备注'" header-class="'text-left'">
+                                <span ng-if="!role.$edit">{{role.description}}</span>
+
+                                <div ng-if="role.$edit">
+                                    <textarea class="form-control" rows="3" ng-model="role.$descriptionChanged"/>
+                                </div>
+                            </td>
+                            <td data-title="'操作'" width="158">
+                                <a ng-if="!role.$edit" href="" class="btn btn-info btn-xs"
+                                   ng-click="edit(role)">编辑</a>
+                                <a ng-if="role.$edit" href="" class="btn btn-primary btn-xs"
+                                   ng-click="save(role, $data)">保存</a>
+                                <a href="" class="btn btn-danger btn-xs"
+                                   ng-click="delete(role, $data)">删除</a>
+                                <a href="" class="btn btn-success btn-xs"
+                                   ng-click="setPerms(role)">设置权限</a>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

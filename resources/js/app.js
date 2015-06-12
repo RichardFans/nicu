@@ -36,6 +36,7 @@ angular.module('nicu', [
     'ngTable',
     'toaster',
 
+
     'nicu.directives',
     'nicu.controllers',
     'nicu.services'
@@ -47,7 +48,7 @@ angular.module('nicu').constant('urls', {
     BASE_API: 'http://localhost/api/v1'
 });
 
-angular.module('nicu.directives', ['ui.bootstrap']);
+angular.module('nicu.directives', ['ui.bootstrap', 'dialogs.main','pascalprecht.translate','dialogs.default-translations', 'ui.tree', 'ui.checkbox']);
 
 angular.module('nicu.controllers', []);
 
@@ -68,7 +69,17 @@ function MainRouter($stateProvider, $urlRouterProvider, $httpProvider) {
         .state('app', {
             url: '/app',
             templateUrl: 'views/categories/main.html',
+            resolve: {
+                window: ['$window', function ($window) {
+                    return $window;
+                }]
+            },
             controller: 'MainCtrl',
+            //目前能实现注销后路由状态重载的办法，但会引起页面刷新（bad！）
+            //关注：https://github.com/angular-ui/ui-router/issues/1095
+            onExit: function (window) {
+                window.location.reload();
+            },
             data: {
                 requireLogin: true
             }
@@ -85,6 +96,25 @@ function MainRouter($stateProvider, $urlRouterProvider, $httpProvider) {
             controller: 'LoginCtrl',
             data: {
                 requireLogin: false
+            }
+        })
+        .state('blank', {
+            templateUrl: 'views/pages/blank.html',
+            url: '/blank',
+            data: {
+                requireLogin: false
+            },
+            resolve: {
+                timeout: ['$timeout', function ($timeout) {
+                    return $timeout;
+                }]
+            },
+            onEnter: function (timeout) {
+                timeout(function () {
+                    var url = "http://" + window.location.host + "/#/login";
+                    console.log('url = ' + url);
+                    window.location.href = url;
+                }, 200, true);
             }
         });
 
@@ -114,6 +144,16 @@ function MainRouter($stateProvider, $urlRouterProvider, $httpProvider) {
             };
         }]);
 }
+angular.module('nicu')
+    .config(['dialogsProvider', '$translateProvider', function (dialogsProvider, $translateProvider) {
+        dialogsProvider.useBackdrop('static');
+        dialogsProvider.useEscClose(true);
+        dialogsProvider.useCopy(false);
+        dialogsProvider.setSize('sm');
+
+        $translateProvider.preferredLanguage('zh-CN');
+    }]);
+
 
 angular.module('nicu').run(['$rootScope', '$state', 'Perference',
     function ($rootScope, $state, Perference) {
@@ -138,13 +178,14 @@ function HomeCtrl($scope, $location, $filter, NgTableParams) {
 'use strict';
 
 angular.module('nicu.controllers')
-    .controller('LoginCtrl', ['$scope', '$state', 'toaster',
+    .controller('LoginCtrl', ['$scope', '$window', '$state', 'toaster',
         'Nodes', 'Auth', 'Perference', LoginCtrl]);
 //$sessionStorage
-function LoginCtrl($scope, $state, toaster, Nodes, Auth, Perference) {
+function LoginCtrl($scope, $window, $state, toaster, Nodes, Auth, Perference) {
     function successAuth(data) {
         Perference.setToken(data.token, $scope.auto_login);
         Perference.setUser($scope.user);
+
         $state.go('app.home');
     }
 
@@ -240,24 +281,26 @@ function perferenceService($q, $sessionStorage, $localStorage) {
 
     return {
         inArray: inArray,
-        getSelectOptions: function (items, id, name, nameKey, addNull) {
-            var arr = [],
-                filer = [];
-            if (typeof(nameKey) === 'undefined') {
-                nameKey = 'name';
+        getSelectOptions: function (items, id, name, nameKey) {
+            var def = $q.defer(),
+                arr = [],
+                data = [];
+            if (typeof(name) === 'undefined') {
+                name = id;
             }
-            if (addNull) {
-                filer.unshift({title: '-', id: ''});
+            if (typeof(nameKey) === 'undefined') {
+                nameKey = 'title';
             }
             angular.forEach(items, function (item) {
                 if (inArray(item[id], arr) === -1) {
                     arr.push(item[id]);
                     e = {'id': item[id]};
                     e[nameKey] = item[name];
-                    filer.push(e);
+                    data.push(e);
                 }
             });
-            return filer;
+            def.resolve(data);
+            return def;
         },
         except: function (exceptId, items) {
             var itemsExp = [];
@@ -268,13 +311,29 @@ function perferenceService($q, $sessionStorage, $localStorage) {
             });
             return itemsExp;
         },
-        getItem: function (id, items) {
+        getItem: function (value, items, key) {
+            if (typeof(key) === 'undefined') {
+                key = 'id';
+            }
             var i = items.length;
             while (i--) {
-                if (items[i].id == id)
+                if (items[i][key] == value)
                     return items[i];
             }
             return null;
+        },
+        getItems: function (value, items, key) {
+            if (typeof(key) === 'undefined') {
+                key = 'id';
+            }
+            var i = items.length;
+            var result = [];
+            while (i--) {
+                if (items[i][key] == value) {
+                    result.push(items[i]);
+                }
+            }
+            return result;
         },
         setUser: function (user) {
             $localStorage.user = {username: user.username, node: user.node};
@@ -329,6 +388,18 @@ function permService($resource) {
 'use strict';
 
 angular.module('nicu.services')
+    .factory('Role', ['$resource', roleService]);
+
+function roleService($resource) {
+    return $resource('/api/v1/roles/:id', {}, {
+        update: {
+            method: 'PUT'
+        }
+    });
+}
+'use strict';
+
+angular.module('nicu.services')
     .provider('runtimeRoutes', ['$stateProvider', runtimeRoutes]);
 
 function runtimeRoutes($stateProvider) {
@@ -343,6 +414,21 @@ function runtimeRoutes($stateProvider) {
             }
         }
     }
+}
+'use strict';
+
+angular.module('nicu.services')
+    .factory('User', ['$resource', userService]);
+
+function userService($resource) {
+    return $resource('/api/v1/users/:id', {}, {
+        update: {
+            method: 'PUT'
+        },
+        query: {
+            method: 'GET'
+        }
+    });
 }
 'use strict';
 
@@ -543,19 +629,15 @@ function CustomReportCtrl($scope) {
 'use strict';
 
 angular.module('nicu.controllers')
-    .controller('EmployeeCtrl', ['$scope', '$window', EmployeeCtrl]);
+    .controller('EmployeeCtrl', ['$scope', 'UserType', EmployeeCtrl]);
 
-function EmployeeCtrl($scope, $window) {
-    $scope.tabs = [
-        { title:'Dynamic Title 1', content:'Dynamic content 1' },
-        { title:'Dynamic Title 2', content:'Dynamic content 2', disabled: true }
-    ];
+function EmployeeCtrl($scope, UserType) {
 
-    $scope.alertMe = function() {
-        setTimeout(function() {
-            $window.alert('You\'ve selected the alert tab!');
-        });
-    };
+    UserType.query().$promise.then(function (data) {
+        $scope.userTypeList = data;
+    });
+
+
 }
 
 
@@ -637,8 +719,8 @@ angular.module('nicu.directives')
                     }
                 });
 
-                $scope.types = Perference.getSelectOptions(data, 'type', 'type', 'title', true);
-                $scope.publishers = Perference.getSelectOptions(data, 'published_by', 'published_by', 'title', true);
+                $scope.types = Perference.getSelectOptions(data, 'type');
+                $scope.publishers = Perference.getSelectOptions(data, 'published_by');
 
                 $scope.show = function (title) {
                     alert('title: ' + title);
@@ -742,15 +824,24 @@ angular.module('nicu.directives')
  * @description
  * # adminPosHeader
  */
+angular.module('nicu.directives')
+    .directive('header', function () {
+        return {
+            templateUrl: 'scripts/directives/main/header/header.html',
+            restrict: 'E',
+            replace: true
+        }
+    });
+'use strict';
 
 angular.module('nicu.directives')
-    .directive('sidebar', [ function () {
+    .directive('sidebar', [function () {
         return {
             templateUrl: 'scripts/directives/main/sidebar/sidebar.html',
             restrict: 'E',
             replace: true,
             scope: {},
-            controller: function ($rootScope, $scope, runtimeRoutes, Category) {
+            controller: function ($rootScope, $scope, $state, runtimeRoutes, Category) {
                 $rootScope.collapseVar = 0;
                 $scope.check = function (x) {
                     if (x == $rootScope.collapseVar) {
@@ -765,7 +856,14 @@ angular.module('nicu.directives')
                     for (var i = 0; i < nodes.length; i++) {
                         var node = nodes[i];
                         if (node.route) {
+                            //ui-router注销后路由无法实现路由清除,因此存在安全隐患
+                            //下面这个做法是牺牲安全性来保障用户体验
+                            //另一种解决办法见routes.js
+                            //请关注：https://github.com/angular-ui/ui-router/issues/1095
+                            //var state = $state.get(node.route.state);
+                            //if (state == null) {
                             runtimeRoutes.add(node.route);
+                            //}
                         }
                         if (node.children && node.children.length > 0) {
                             $scope.loadRoutes(node.children);
@@ -773,8 +871,12 @@ angular.module('nicu.directives')
                     }
                 }
 
-                $scope.category = Category.get({id: 1}, function () {
-                    $scope.loadRoutes($scope.category[1].children);
+                Category.get({id: 1}).$promise.then(function (data) {
+                    console.log('Category get: ' + data);
+                    $scope.loadRoutes(data[1].children);
+                    $scope.category = data;
+                }, function(error) {
+                    console.log('Category get error: ' + error);
                 });
 
             }
@@ -782,37 +884,526 @@ angular.module('nicu.directives')
     }]);
 'use strict';
 
-/**
- * @ngdoc directive
- * @name izzyposWebApp.directive:adminPosHeader
- * @description
- * # adminPosHeader
- */
 angular.module('nicu.directives')
-    .directive('header', function () {
+    .directive('tabInclude', [function () {
+        var selfIndex = function (element) {
+            var arr = element.parent().children();
+            var val = element[0];
+            var i = arr.length;
+            while (i--) {
+                if (val == arr[i]) return i;
+            }
+            return -1
+        };
+
         return {
-            templateUrl: 'scripts/directives/main/header/header.html',
+            require: ['^tab', '^tabset'],
+            restrict: 'A',
+            priority: 100,
+            compile: function (element, attrs, transclude) {
+
+                var elem = angular.element('<div></div>');
+                elem.attr('ng-include', '$include[' + selfIndex(element) + ']');
+                element.append(elem);
+
+                return function postLink(scope, element, attrs) {
+                    if (scope.$include == null) {
+                        scope.$include = [];
+                    }
+                    scope.$include.push('');
+
+                    element.isolateScope().$watch('active',
+                        function (newValue) {
+
+                            if (newValue) {
+                                scope.$include[selfIndex(element)] = attrs.tabInclude;
+                            }
+                        }
+                    );
+                };
+            }
+        };
+    }]);
+'use strict';
+
+angular.module('nicu.directives')
+    .directive('rolePermissionList', function () {
+        var controller = ['$scope', 'dialogs', 'toaster', 'NgTableParams', 'Role', 'Permission', 'Perference',
+            function ($scope, dialogs, toaster, NgTableParams, Role, Permission, Perference) {
+
+                $scope.tableParams = new NgTableParams({
+                    page: 1,
+                    count: 10
+                }, {
+                    counts: [5, 10, 15],
+                    total: 0,
+                    getData: function ($defer, params) {
+                        Role.query(function (data) {
+                            console.log('Role query');
+                            params.total(data.length);
+
+                            $scope.roles = [];
+                            angular.forEach(data, function (item) {
+                                $scope.roles.push(item.name);
+                            });
+
+                            $defer.resolve(data.slice((params.page() - 1) * params.count(),
+                                params.page() * params.count()));
+
+                        });
+                    }
+                });
+
+                $scope.add = function () {
+                    dialogs.create('RoleAddDlg.html', 'RoleAddDlgCtrl',
+                        {Perference: Perference, Permission: Permission, roles: $scope.roles}, {
+                            animation: true,
+                            size: 'md'
+                        })
+                        .result.then(function (role) {
+                            Role.save(role).$promise.then(function (success) {
+                                console.log('add success: ' + success);
+                                $scope.tableParams.reload();
+                            }, function (error) {
+                                console.log('add error: ' + error);
+                            });
+                        });
+                }
+
+                $scope.edit = function (role) {
+                    role.$edit = true;
+                    role.$nameChanged = role.name;
+                    role.$descriptionChanged = role.description;
+                };
+
+                $scope.save = function (role, $data) {
+                    role.$edit = false;
+                    if (role.$nameChanged == "") {
+                        toaster.pop('error', '角色名称不能为空！');
+                    } else if (role.name != role.$nameChanged
+                        && Perference.getItems(role.$nameChanged, $data, 'name').length == 1) {
+                        toaster.pop('error', '角色名称必须唯一！');
+                    } else if (role.name != role.$nameChanged
+                        || role.description != role.$descriptionChanged) {
+                        console.log('s = ' + Perference.getItems(role.$nameChanged, $data, 'name').length);
+
+                        var data = {};
+                        data['name'] = role.$nameChanged;
+                        data['display_name'] = role.$nameChanged;
+                        data['description'] = role.$descriptionChanged;
+                        Role.update({id: role.id}, data).$promise.then(function (success) {
+                            console.log('save success: ' + success);
+                            $scope.tableParams.reload();
+                        }, function (error) {
+                            console.log('save error: ' + error);
+                        });
+                    }
+                };
+
+                $scope.delete = function (role, $data) {
+                    dialogs.confirm('删除员工角色', '确定要删除<strong>' + role.name + '</strong>角色吗？')
+                        .result.then(function () {
+                            Role.delete({id: role.id}).$promise.then(function (success) {
+                                console.log('del success: ' + success);
+                                $scope.tableParams.reload();
+                            }, function (error) {
+                                console.log('del error: ' + error);
+                            });
+                        });
+                };
+
+                $scope.setPerms = function (role) {
+                    dialogs.create('PermSetDlg.html', 'PermSetDlgCtrl',
+                        {toaster: toaster, Permission: Permission, role: role}, {
+                            animation: true,
+                            size: 'md'
+                        })
+                        .result.then(function (perms) {
+                            //Role.save(role).$promise.then(function (success) {
+                            //    console.log('add success: ' + success);
+                            //    $scope.tableParams.reload();
+                            //}, function (error) {
+                            //    console.log('add error: ' + error);
+                            //});
+                        });
+                }
+            }];
+
+        return {
+            templateUrl: 'scripts/directives/setting/role-permission-list/role-permission-list.html',
             restrict: 'E',
-            replace: true
+            replace: true,
+            scope: {},
+            controller: controller
+
         }
+    });
+
+angular.module('nicu.controllers')
+    .controller('PermSetDlgCtrl', function ($scope, $modalInstance, data) {
+        $scope.role = data.role;
+
+        var setParentOfChildren = function (node) {
+            angular.forEach(node.children, function (child) {
+                child.parent = node;
+                if (child.children != null && child.children.length > 0) {
+                    setParentOfChildren(child);
+                }
+            });
+        };
+
+        data.Permission.get({id: data.role.id}).$promise.then(function (data) {
+            console.log('Permission get: ' + data);
+            setParentOfChildren(data[1]);
+            $scope.data = data[1].children;
+
+        }, function (error) {
+            console.log('Permission get error: ' + error);
+        });
+
+        $scope.setCheckedAll = function (node, checked) {
+            node.is_checked = checked;
+            setCheckedChildren(node);
+        }
+
+        var setCheckedChildren = function (node) {
+            if (node.children != null && node.children.length > 0) {
+                angular.forEach(node.children, function (child) {
+                    child.is_checked = node.is_checked;
+                    setCheckedChildren(child);
+                });
+            }
+        }
+
+        var setCheckedAncestors = function (node) {
+            if (node.parent) {
+                if (node.is_checked) {
+                    if (!node.parent.is_checked) {
+                        node.parent.is_checked = node.is_checked;
+                        setCheckedAncestors(node.parent);
+                    }
+                } else {
+                    if (node.parent.is_checked) {
+                        var allUnchecked = true;
+                        var children = node.parent.children;
+                        for (var i = 0; i < children.length; i++) {
+                            if (children[i].is_checked) {
+                                allUnchecked = false;
+                                break;
+                            }
+                        }
+                        if (allUnchecked) {
+                            node.parent.is_checked = node.is_checked;
+                            console.log('xx node.parent.is_checked: ' + node.parent.is_checked);
+                            setCheckedAncestors(node.parent);
+                        }
+                    }
+                }
+            }
+        }
+
+        $scope.onChange = function (node) {
+            setCheckedChildren(node);
+            setCheckedAncestors(node);
+        }
+
+        $scope.ok = function (role) {
+            if (role.name == null || role.name == "") {
+                data.toaster.pop('warning', '请填写角色名称！');
+            } else if ($scope.conflict) {
+                data.toaster.pop('warning', '该角色名称已经存在！');
+            } else {
+                role.display_name = role.name;
+                $modalInstance.close(role);
+            }
+        };
+
+        $scope.cancel = function () {
+            $modalInstance.dismiss('cancel');
+        };
+    });
+
+angular.module('nicu.controllers')
+    .controller('RoleAddDlgCtrl', function ($scope, $modalInstance, data) {
+        $scope.roles = data.roles;
+        $scope.role = {};
+        $scope.conflict = false;
+
+        $scope.$watch(function (scope) {
+                return scope.role.name;
+            },
+            function (newValue, oldValue) {
+                if (data.Perference.inArray(newValue, $scope.roles) > 0) {
+                    $scope.conflict = true;
+                } else {
+                    $scope.conflict = false;
+                }
+            }
+        );
+
+        $scope.ok = function (role) {
+            if (role.name == null || role.name == "") {
+                data.toaster.pop('warning', '请填写角色名称！');
+            } else if ($scope.conflict) {
+                data.toaster.pop('warning', '该角色名称已经存在！');
+            } else {
+                role.display_name = role.name;
+                $modalInstance.close(role);
+            }
+        };
+
+        $scope.cancel = function () {
+            $modalInstance.dismiss('cancel');
+        };
     });
 'use strict';
 
 angular.module('nicu.directives')
-    .directive('userTypeList', function () {
-        var controller = ['$scope', '$modal', 'toaster', 'NgTableParams', 'UserType', 'Perference',
-            function ($scope, $modal, toaster, NgTableParams, UserType, Perference) {
+    .directive('userList', function () {
+        var controller = ['$scope', '$q', '$filter', '$modal', 'toaster', 'NgTableParams', 'User', 'Perference',
+            function ($scope, $q, $filter, $modal, toaster, NgTableParams, User, Perference) {
+                var sexes = ['男', '女', '未知'];
+                var eduLvs = ['博研', '硕研', '普本', '成本', '大专', '中专', '高中', '其它'];
+                var titles = ['高级', '副高', '中级', '初级', '其它'];
+                var yesOrNo = ['是', '否'];
+
+                var getSelectOptions = function (data) {
+                    var def = $q.defer(),
+                        outer = [];
+                    angular.forEach(data, function (item) {
+                        outer.push({
+                            'id': item,
+                            'title': item
+                        });
+                    });
+                    def.resolve(outer);
+                    return def;
+                }
+                $scope.roles_def = $q.defer();
+
+                $scope.cols = [
+                    {title: '姓名', sortable: 'name', filter: {name: 'text'}, show: true, field: 'name'},
+                    /* 账户信息 */
+                    {title: '用户名', sortable: 'username', filter: {name: 'text'}, show: true, field: 'username'},
+                    {title: '上次登录ip', sortable: 'last_ip', filter: {name: 'text'}, show: true, field: 'last_ip'},
+                    {title: '上次登录时间', sortable: 'last_time', filter: {name: 'text'}, show: true, field: 'last_ip'},
+                    {title: '登录次数', sortable: 'login_count', filter: {name: 'text'}, show: true, field: 'login_count'},
+                    /* 基本信息 */
+                    {
+                        title: '性别',
+                        sortable: 'sex',
+                        filter: {name: 'select'},
+                        filterData: getSelectOptions(sexes),
+                        show: true,
+                        field: 'sex'
+                    },
+                    {title: '出生年月', sortable: 'birthday', filter: {name: 'text'}, show: true, field: 'birthday'},
+                    {
+                        title: '最高学历',
+                        sortable: 'edu_level',
+                        filter: {name: 'select'},
+                        filterData: getSelectOptions(eduLvs),
+                        show: true,
+                        field: 'edu_level'
+                    },
+
+                    /* 联系方式 */
+                    {title: '邮箱', sortable: 'email', filter: {name: 'text'}, show: true, field: 'email'},
+                    {title: '电话号码', sortable: 'phone', filter: {name: 'text'}, show: true, field: 'phone'},
+
+                    /* 工作相关 */
+                    {
+                        title: '职称',
+                        sortable: 'title',
+                        filter: {name: 'select'},
+                        filterData: getSelectOptions(titles),
+                        show: true,
+                        field: 'title'
+                    },
+                    {title: '职务', sortable: 'post', filter: {name: 'text'}, show: true, field: 'post'},
+                    {
+                        title: '是否有执照',
+                        sortable: 'is_licensed',
+                        filter: {name: 'select'},
+                        filterData: getSelectOptions(yesOrNo),
+                        show: true,
+                        field: 'email'
+                    },
+                    {title: '入科时间', sortable: 'entry_time', filter: {name: 'text'}, show: true, field: 'entry_time'},
+                    {
+                        title: '员工分类',
+                        sortable: 'type_id',
+                        filter: {name: 'text'},
+                        filterData: $scope.roles_def,
+                        show: true,
+                        field: 'type_id'
+                    },
+
+                ];
 
                 $scope.tableParams = new NgTableParams({
                     page: 1,
                     count: 10,
-                    filter: {}
+                    sorting: {
+                        //parent_id: 'asc'     // initial sorting
+                    }
+                }, {
+                    counts: [5, 10, 15],
+                    total: 0,
+                    getData: function ($defer, params) {
+                        User.query(function (data) {
+                            console.log('User query');
+
+                            var roles = Perference.getSelectOptions(data.roles, 'display_name');
+                            $scope.roles_def.resolve(roles);
+
+                            data = data.users;
+
+                            params.total(data.length);
+
+                            data = params.filter() ?
+                                $filter('filter')(data, params.filter()) :
+                                data;
+
+                            data = params.sorting() ?
+                                $filter('orderBy')(data, params.orderBy()) :
+                                data;
+
+                            $defer.resolve(data.slice((params.page() - 1) * params.count(),
+                                params.page() * params.count()));
+
+                        });
+                    }
+                });
+
+                $scope.add = function () {
+                    //var modalInstance = $modal.open({
+                    //    templateUrl: 'UserDlg.html',
+                    //    controller: 'UserDlgCtrl',
+                    //    resolve: {
+                    //        parents: function () {
+                    //            return $scope.parents;
+                    //        },
+                    //        toaster: function () {
+                    //            return toaster;
+                    //        }
+                    //    }
+                    //});
+                    //
+                    //modalInstance.result.then(function (type) {
+                    //    User.save(type).$promise.then(function (success) {
+                    //        console.log('add success: ' + success);
+                    //        $scope.tableParams.reload();
+                    //    }, function (error) {
+                    //        console.log('add error: ' + error);
+                    //    });
+                    //});
+                }
+
+                $scope.edit = function (type) {
+                    //type.$edit = true;
+                    //type.$nameChanged = type.name;
+                    //type.$parentChanged = type.parent;
+                    //$scope.parents_list = Perference.except(type.id, $scope.parents);
+                };
+
+                $scope.save = function (type, $data) {
+                    //type.$edit = false;
+                    //if (type.$nameChanged == "") {
+                    //    toaster.pop('error', '类型名称不能为空！', '');
+                    //} else if (Perference.inArray(type.$parentChanged, $scope.parents) < 0) {
+                    //    toaster.pop('error', '无效的父类型！', '');
+                    //} else if (type.name != type.$nameChanged
+                    //    || type.parent_id != type.$parentChanged.id) {
+                    //
+                    //    if (type.parent_id == 0 && type.$parentChanged.id != 0) {
+                    //        for (var i = $data.length; i--;) {
+                    //            if ($data[i].parent_id == type.id) {
+                    //                toaster.pop('error', '只支持二级分类，但该类型包含子分类，因此不能拥有上级分类！', '');
+                    //                return;
+                    //            }
+                    //        }
+                    //    }
+                    //
+                    //    var data = {};
+                    //    data['name'] = type.$nameChanged;
+                    //    data['parent_id'] = type.$parentChanged.id;
+                    //    User.update({id: type.id}, data).$promise.then(function (success) {
+                    //        console.log('save success: ' + success);
+                    //        $scope.tableParams.reload();
+                    //    }, function (error) {
+                    //        console.log('save error: ' + error);
+                    //    });
+                    //
+                    //}
+                };
+
+                $scope.delete = function (type, $data) {
+                    //for (var i = $data.length; i--;) {
+                    //    if ($data[i].parent_id == type.id) {
+                    //        toaster.pop('error', '无法删除包含子类型的分类！', '');
+                    //        return;
+                    //    }
+                    //}
+                    //User.delete({id: type.id}).$promise.then(function (success) {
+                    //    console.log('del success: ' + success);
+                    //    $scope.tableParams.reload();
+                    //}, function (error) {
+                    //    console.log('del error: ' + error);
+                    //});
+                };
+            }];
+
+        return {
+            templateUrl: 'scripts/directives/setting/user-list/user-list.html',
+            restrict: 'E',
+            replace: true,
+            scope: {},
+            controller: controller
+
+        }
+    });
+//
+//angular.module('nicu.controllers').controller('UserDlgCtrl', function ($scope, $modalInstance, toaster, parents) {
+//    $scope.parents = parents;
+//    $scope.type = {parent: parents[0]};
+//
+//    $scope.ok = function (type) {
+//        if (type.name != null && type.name != "") {
+//            type.parent_id = type.parent.id;
+//            $modalInstance.close(type);
+//        } else {
+//            toaster.pop('warning', '请填写类型名称！', '');
+//        }
+//    };
+//
+//    $scope.cancel = function () {
+//        $modalInstance.dismiss('cancel');
+//    };
+//});
+'use strict';
+
+angular.module('nicu.directives')
+    .directive('userTypeList', function () {
+        var controller = ['$scope', '$filter', 'dialogs', 'toaster', 'NgTableParams', 'UserType', 'Perference',
+            function ($scope, $filter, dialogs, toaster, NgTableParams, UserType, Perference) {
+                $scope.tableParams = new NgTableParams({
+                    page: 1,
+                    count: 10,
+                    sorting: {
+                        parent_id: 'asc'     // initial sorting
+                    }
                 }, {
                     counts: [5, 10, 15],
                     total: 0,
                     getData: function ($defer, params) {
                         UserType.query(function (data) {
+                            console.log('UserType query');
                             params.total(data.length);
+
+                            var data = params.sorting() ?
+                                $filter('orderBy')(data, params.orderBy()) :
+                                data;
 
                             $scope.parents = [{id: '0', name: '无'}];
                             angular.forEach(data, function (item) {
@@ -835,30 +1426,23 @@ angular.module('nicu.directives')
                 });
 
                 $scope.add = function () {
-                    var modalInstance = $modal.open({
-                        templateUrl: 'UserTypeDlg.html',
-                        controller: 'UserTypeDlgCtrl',
-                        resolve: {
-                            parents: function () {
-                                return $scope.parents;
-                            },
-                            toaster: function () {
-                                return toaster;
-                            }
-                        }
-                    });
-
-                    modalInstance.result.then(function (type) {
-                        UserType.save(type).$promise.then(function (success) {
-                            console.log('add success: ' + success);
-                            $scope.tableParams.reload();
-                        }, function (error) {
-                            console.log('add error: ' + error);
+                    dialogs.create('UserTypeDlg.html', 'UserTypeDlgCtrl',
+                        {parents: $scope.parents, toaster: toaster}, {
+                            animation: true,
+                            size: 'md'
+                        })
+                        .result.then(function (type) {
+                            UserType.save(type).$promise.then(function (success) {
+                                console.log('add success: ' + success);
+                                $scope.tableParams.reload();
+                            }, function () {
+                                console.log('add error: ' + error);
+                            })
                         });
-                    });
                 }
 
                 $scope.edit = function (type) {
+
                     type.$edit = true;
                     type.$nameChanged = type.name;
                     type.$parentChanged = type.parent;
@@ -874,7 +1458,7 @@ angular.module('nicu.directives')
                     } else if (type.name != type.$nameChanged
                         || type.parent_id != type.$parentChanged.id) {
 
-                        if (type.parent_id == 0) {
+                        if (type.parent_id == 0 && type.$parentChanged.id != 0) {
                             for (var i = $data.length; i--;) {
                                 if ($data[i].parent_id == type.id) {
                                     toaster.pop('error', '只支持二级分类，但该类型包含子分类，因此不能拥有上级分类！', '');
@@ -897,20 +1481,24 @@ angular.module('nicu.directives')
                 };
 
                 $scope.delete = function (type, $data) {
-                    for (var i = $data.length; i--;) {
-                        if ($data[i].parent_id == type.id) {
-                            toaster.pop('error', '无法删除包含子类型的分类！', '');
-                            return;
-                        }
-                    }
-                    UserType.delete({id: type.id}).$promise.then(function (success) {
-                        console.log('del success: ' + success);
-                        $scope.tableParams.reload();
-                    }, function (error) {
-                        console.log('del error: ' + error);
-                    });
+                    dialogs.confirm('删除员工类型', '确定要删除<strong>' + type.name + '</strong>分类吗？')
+                        .result.then(function () {
+                            for (var i = $data.length; i--;) {
+                                if ($data[i].parent_id == type.id) {
+                                    toaster.pop('error', '无法删除包含子类型的分类！', '');
+                                    return;
+                                }
+                            }
+                            UserType.delete({id: type.id}).$promise.then(function (success) {
+                                console.log('del success: ' + success);
+                                $scope.tableParams.reload();
+                            }, function (error) {
+                                console.log('del error: ' + error);
+                            });
+                        });
                 };
-            }];
+            }
+        ];
 
         return {
             templateUrl: 'scripts/directives/setting/user-type-list/user-type-list.html',
@@ -920,18 +1508,19 @@ angular.module('nicu.directives')
             controller: controller
 
         }
-    });
+    }
+);
 
-angular.module('nicu.controllers').controller('UserTypeDlgCtrl', function ($scope, $modalInstance, toaster, parents) {
-    $scope.parents = parents;
-    $scope.type = {parent: parents[0]};
+angular.module('nicu.controllers').controller('UserTypeDlgCtrl', function ($scope, $modalInstance, data) {
+    $scope.parents = data.parents;
+    $scope.type = {parent: data.parents[0]};
 
     $scope.ok = function (type) {
         if (type.name != null && type.name != "") {
             type.parent_id = type.parent.id;
             $modalInstance.close(type);
         } else {
-            toaster.pop('warning', '请填写类型名称！', '');
+            data.toaster.pop('warning', '请填写类型名称！', '');
         }
     };
 
@@ -939,6 +1528,33 @@ angular.module('nicu.controllers').controller('UserTypeDlgCtrl', function ($scop
         $modalInstance.dismiss('cancel');
     };
 });
+'use strict';
+
+/**
+ * @ngdoc directive
+ * @name izzyposWebApp.directive:adminPosHeader
+ * @description
+ * # adminPosHeader
+ */
+angular.module('nicu.directives')
+    .directive('headerNotification',function(){
+        var controller = ['$window', '$scope', '$state', 'Auth', function ($window, $scope, $state, Auth) {
+            $scope.logout = function () {
+                Auth.logout(function () {
+                    $state.go('blank');
+                });
+            };
+        }];
+
+        return {
+            templateUrl:'scripts/directives/main/header/header-notification/header-notification.html',
+            restrict: 'E',
+            replace: true,
+            controller: controller
+        }
+    });
+
+
 'use strict';
 
 /**
@@ -961,29 +1577,3 @@ angular.module('nicu')
             }
         }
     });
-'use strict';
-
-/**
- * @ngdoc directive
- * @name izzyposWebApp.directive:adminPosHeader
- * @description
- * # adminPosHeader
- */
-angular.module('nicu.directives')
-    .directive('headerNotification',function(){
-        var controller = ['$scope', '$state', 'Auth', function ($scope, $state, Auth) {
-            $scope.logout = function () {
-                Auth.logout(function () {
-                    $state.go('login');
-                });
-            };
-        }];
-
-        return {
-            templateUrl:'scripts/directives/main/header/header-notification/header-notification.html',
-            restrict: 'E',
-            replace: true,
-            controller: controller
-        }
-    });
-

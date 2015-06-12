@@ -1,9 +1,8 @@
 <div class="panel panel-default">
 
     <script type="text/ng-template" id="UserTypeDlg.html">
-        <div class="modal-header dialog-header-confirm">
-            <button type="button" class="close" ng-click="cancel()">&times;</button>
-            <h4 class="modal-title">添加分类</h4>
+        <div class="modal-header">
+            <h3 class="modal-title">添加分类</h3>
         </div>
         <div class="modal-body">
 
@@ -48,7 +47,7 @@
 
         <div class="panel panel-default">
             <div class="panel-heading">
-                <strong>员工分类列表</strong>
+                <strong>员工信息列表</strong>
 
 
                 <div class="btn-group pull-right">
@@ -63,17 +62,21 @@
             <div class="panel-body">
                 <div class="table-responsive">
 
-                    <table class="table table-bordered table-hover table-row-clicked no-selection"
-                           ng-table="tableParams">
+                    <table ng-table-dynamic="tableParams with cols" show-filter="true"
+                           class="table table-bordered table-hover table-row-clicked no-selection">
 
-                        <tr ng-repeat="type in $data" ng-dblclick="edit(type)">
+                        <tr ng-repeat="user in $data" ng-dblclick="edit(user)">
                             <td data-title="'序号'" header-class="'text-left'" width="50">
                                 {{$index+1}}
                             </td>
+                            <td title="'员工姓名'" header-class="'text-left'"
+                                sortable="'name'" width="28%">
+                                {{user.name}}
+                            </td>
                             <td data-title="'上级类型'" header-class="'text-left'"
-                                sortable="'parent_id'" width="28%">
-                                <span ng-if="!type.$edit">{{type.parent.name}}</span>
-                                <ui-select ng-if="type.$edit" ng-model="type.$parentChanged"
+                                sortable="'parent_id'">
+                                <span ng-if="!user.$edit">{{user.parent.name}}</span>
+                                <ui-select ng-if="user.$edit" ng-model="user.$parentChanged"
                                            ng-disabled="disabled" title="选择上级类型">
                                     <ui-select-match placeholder="选择上级类型...">{{$select.selected.name}}
                                     </ui-select-match>
@@ -82,21 +85,11 @@
                                     </ui-select-choices>
                                 </ui-select>
                             </td>
-                            <td data-title="'类型名称'" header-class="'text-left'"
-                                sortable="'name'">
-                                <span ng-if="!type.$edit">{{type.name}}</span>
-
-                                <div ng-if="type.$edit">
-                                    <input class="form-control" type="text" ng-model="type.$nameChanged"/>
-                                </div>
-                            </td>
                             <td data-title="'操作'" width="100">
-                                <a ng-if="!type.$edit" href="" class="btn btn-info btn-xs"
-                                   ng-click="edit(type)">编辑</a>
-                                <a ng-if="type.$edit" href="" class="btn btn-primary btn-xs"
-                                   ng-click="save(type, $data)">保存</a>
+                                <a href="" class="btn btn-info btn-xs"
+                                   ng-click="edit(user)">编辑</a>
                                 <a href="" class="btn btn-danger btn-xs"
-                                   ng-click="delete(type, $data)">删除</a>
+                                   ng-click="delete(user, $data)">删除</a>
                             </td>
                         </tr>
                     </table>

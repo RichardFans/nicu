@@ -31,6 +31,9 @@ Route::group(['prefix' => 'api', 'middleware' => 'switch_node_db'], function () 
             Route::resource('user_types', 'Api\V1\UserTypeController',
                 ['only' => ['index', 'store', 'update', 'destroy']]);
 
+            Route::resource('roles', 'Api\V1\RoleController',
+                ['only' => ['index', 'store', 'update', 'destroy']]);
+
             Route::resource('categories', 'Api\V1\CategoryController',
                 ['only' => ['show']]);
 

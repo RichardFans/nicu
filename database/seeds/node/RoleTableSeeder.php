@@ -94,10 +94,14 @@ class RoleTableSeeder extends Seeder
         DB::table('role_user')->truncate();
 
         $roles = [
-            ['name' => 'node_admin', 'display_name' => '节点管理员'],
-            ['name' => 'office_leader', 'display_name' => '科室主任用户'],
-            ['name' => 'team_leader', 'display_name' => '组长用户'],
-            ['name' => 'team_member', 'display_name' => '普通员工'],
+            ['name' => '节点管理员', 'display_name' => '节点管理员',
+                'description' => '每个科室有且仅有一位节点管理员，负责科室后台数据维护.'],
+            ['name' => '科室主任用户', 'display_name' => '科室主任用户',
+                'description' => '科室负责人，拥有科室办公中所有的权限.'],
+            ['name' => '组长用户', 'display_name' => '组长用户',
+                'description' => '小组负责人，拥有科室办公中组长专有的权限，例如请假审核、绩效审核等.'],
+            ['name' => '普通员工', 'display_name' => '普通员工',
+                'description' => '一般用户，拥有系统最基本的功能的使用权限.'],
         ];
 
         for ($i = 0; $i < count($roles); $i++) {

@@ -9,6 +9,7 @@ angular.module('nicu', [
     'ngTable',
     'toaster',
 
+
     'nicu.directives',
     'nicu.controllers',
     'nicu.services'
@@ -20,7 +21,7 @@ angular.module('nicu').constant('urls', {
     BASE_API: 'http://localhost/api/v1'
 });
 
-angular.module('nicu.directives', ['ui.bootstrap']);
+angular.module('nicu.directives', ['ui.bootstrap', 'dialogs.main','pascalprecht.translate','dialogs.default-translations', 'ui.tree', 'ui.checkbox']);
 
 angular.module('nicu.controllers', []);
 

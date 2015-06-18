@@ -2,6 +2,8 @@
 
 use App\Http\Requests;
 use App\Http\Controllers\Controller;
+use App\Models\Node\User;
+use App\Models\Node\Role;
 
 use Illuminate\Http\Request;
 
@@ -14,7 +16,10 @@ class UserController extends Controller {
 	 */
 	public function index()
 	{
-		//
+        $users = User::all();
+        $roles = Role::all(['id', 'display_name']);
+
+        return compact(['users', 'roles']);
 	}
 
 	/**

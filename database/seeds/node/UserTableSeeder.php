@@ -40,8 +40,7 @@ class UserTableSeeder extends Seeder
                 'entry_time' => Carbon::parse('2013-02-20'),
 
                 'type_id' => 1,
-                'created_at' => Carbon::now(),
-                'updated_at' => Carbon::now(),],
+            ],
             //2
             ['username' => 'he_lan',
                 'password' => bcrypt('888888'),
@@ -64,8 +63,7 @@ class UserTableSeeder extends Seeder
                 'entry_time' => Carbon::parse('2012-02-20'),
 
                 'type_id' => 1,
-                'created_at' => Carbon::now(),
-                'updated_at' => Carbon::now(),],
+            ],
             //3
             ['username' => 'sun_yong',
                 'password' => bcrypt('123456'),
@@ -88,8 +86,7 @@ class UserTableSeeder extends Seeder
                 'entry_time' => Carbon::parse('2013-10-01'),
 
                 'type_id' => 1,
-                'created_at' => Carbon::now(),
-                'updated_at' => Carbon::now(),],
+            ],
             //4
             ['username' => 'wang_jin_rong',
                 'password' => bcrypt('123456'),
@@ -112,8 +109,7 @@ class UserTableSeeder extends Seeder
                 'entry_time' => Carbon::parse('2014-04-15'),
 
                 'type_id' => 1,
-                'created_at' => Carbon::now(),
-                'updated_at' => Carbon::now(),],
+            ],
             //5
             ['username' => 'alayang',
                 'password' => bcrypt('888888'),
@@ -136,9 +132,13 @@ class UserTableSeeder extends Seeder
                 'entry_time' => Carbon::parse('2014-04-15'),
 
                 'type_id' => 1,
-                'created_at' => Carbon::now(),
-                'updated_at' => Carbon::now(),],
+            ],
         ];
+
+        foreach ($users as $i => $user) {
+            $users[$i]['created_at'] = Carbon::now();
+            $users[$i]['updated_at'] = Carbon::now();
+        }
         TestHelper::start();
 //        foreach ($users as $user) {
 //            User::create($user);

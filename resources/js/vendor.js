@@ -1,5 +1,5 @@
 /**
- * @license AngularJS v1.3.15
+ * @license AngularJS v1.3.16
  * (c) 2010-2014 Google, Inc. http://angularjs.org
  * License: MIT
  */
@@ -54,7 +54,7 @@ function minErr(module, ErrorConstructor) {
       return match;
     });
 
-    message = message + '\nhttp://errors.angularjs.org/1.3.15/' +
+    message = message + '\nhttp://errors.angularjs.org/1.3.16/' +
       (module ? module + '/' : '') + code;
     for (i = 2; i < arguments.length; i++) {
       message = message + (i == 2 ? '?' : '&') + 'p' + (i - 2) + '=' +
@@ -149,6 +149,7 @@ function minErr(module, ErrorConstructor) {
   createMap: true,
 
   NODE_TYPE_ELEMENT: true,
+  NODE_TYPE_ATTRIBUTE: true,
   NODE_TYPE_TEXT: true,
   NODE_TYPE_COMMENT: true,
   NODE_TYPE_DOCUMENT: true,
@@ -260,7 +261,9 @@ function isArrayLike(obj) {
     return false;
   }
 
-  var length = obj.length;
+  // Support: iOS 8.2 (not reproducible in simulator)
+  // "length" in obj used to prevent JIT error (gh-11508)
+  var length = "length" in Object(obj) && obj.length;
 
   if (obj.nodeType === NODE_TYPE_ELEMENT && length) {
     return true;
@@ -1042,8 +1045,8 @@ function toJsonReplacer(key, value) {
  * stripped since angular uses this notation internally.
  *
  * @param {Object|Array|Date|string|number} obj Input to be serialized into JSON.
- * @param {boolean|number=} pretty If set to true, the JSON output will contain newlines and whitespace.
- *    If set to an integer, the JSON output will contain that many spaces per indentation (the default is 2).
+ * @param {boolean|number} [pretty=2] If set to true, the JSON output will contain newlines and whitespace.
+ *    If set to an integer, the JSON output will contain that many spaces per indentation.
  * @returns {string|undefined} JSON-ified string representing `obj`.
  */
 function toJson(obj, pretty) {
@@ -1675,6 +1678,7 @@ function createMap() {
 }
 
 var NODE_TYPE_ELEMENT = 1;
+var NODE_TYPE_ATTRIBUTE = 2;
 var NODE_TYPE_TEXT = 3;
 var NODE_TYPE_COMMENT = 8;
 var NODE_TYPE_DOCUMENT = 9;
@@ -1911,10 +1915,17 @@ function setupModuleLoader(window) {
            * @ngdoc method
            * @name angular.Module#filter
            * @module ng
-           * @param {string} name Filter name.
+           * @param {string} name Filter name - this must be a valid angular expression identifier
            * @param {Function} filterFactory Factory function for creating new instance of filter.
            * @description
            * See {@link ng.$filterProvider#register $filterProvider.register()}.
+           *
+           * <div class="alert alert-warning">
+           * **Note:** Filter names must be valid angular {@link expression} identifiers, such as `uppercase` or `orderBy`.
+           * Names with special characters, such as hyphens and dots, are not allowed. If you wish to namespace
+           * your filters, then you can use capitalization (`myappSubsectionFilterx`) or underscores
+           * (`myapp_subsection_filterx`).
+           * </div>
            */
           filter: invokeLater('$filterProvider', 'register'),
 
@@ -2128,11 +2139,11 @@ function toDebugString(obj) {
  * - `codeName` – `{string}` – Code name of the release, such as "jiggling-armfat".
  */
 var version = {
-  full: '1.3.15',    // all of these placeholder strings will be replaced by grunt's
+  full: '1.3.16',    // all of these placeholder strings will be replaced by grunt's
   major: 1,    // package task
   minor: 3,
-  dot: 15,
-  codeName: 'locality-filtration'
+  dot: 16,
+  codeName: 'cookie-oatmealification'
 };
 
 
@@ -2308,7 +2319,7 @@ function publishExternalAPI(angular) {
  * Angular to manipulate the DOM in a cross-browser compatible way. **jqLite** implements only the most
  * commonly needed functionality with the goal of having a very small footprint.</div>
  *
- * To use jQuery, simply load it before `DOMContentLoaded` event fired.
+ * To use `jQuery`, simply ensure it is loaded before the `angular.js` file.
  *
  * <div class="alert">**Note:** all element references in Angular are always wrapped with jQuery or
  * jqLite; they are never raw DOM references.</div>
@@ -2324,7 +2335,7 @@ function publishExternalAPI(angular) {
  * - [`children()`](http://api.jquery.com/children/) - Does not support selectors
  * - [`clone()`](http://api.jquery.com/clone/)
  * - [`contents()`](http://api.jquery.com/contents/)
- * - [`css()`](http://api.jquery.com/css/) - Only retrieves inline-styles, does not call `getComputedStyle()`
+ * - [`css()`](http://api.jquery.com/css/) - Only retrieves inline-styles, does not call `getComputedStyle()`. As a setter, does not convert numbers to strings or append 'px'.
  * - [`data()`](http://api.jquery.com/data/)
  * - [`detach()`](http://api.jquery.com/detach/)
  * - [`empty()`](http://api.jquery.com/empty/)
@@ -2867,6 +2878,10 @@ forEach({
   },
 
   attr: function(element, name, value) {
+    var nodeType = element.nodeType;
+    if (nodeType === NODE_TYPE_TEXT || nodeType === NODE_TYPE_ATTRIBUTE || nodeType === NODE_TYPE_COMMENT) {
+      return;
+    }
     var lowercasedName = lowercase(name);
     if (BOOLEAN_ATTR[lowercasedName]) {
       if (isDefined(value)) {
@@ -3557,7 +3572,7 @@ function annotate(fn, strictDi, name) {
  * Return an instance of the service.
  *
  * @param {string} name The name of the instance to retrieve.
- * @param {string} caller An optional string to provide the origin of the function call for error messages.
+ * @param {string=} caller An optional string to provide the origin of the function call for error messages.
  * @return {*} The instance.
  */
 
@@ -3568,8 +3583,8 @@ function annotate(fn, strictDi, name) {
  * @description
  * Invoke the method and supply the method arguments from the `$injector`.
  *
- * @param {!Function} fn The function to invoke. Function parameters are injected according to the
- *   {@link guide/di $inject Annotation} rules.
+ * @param {Function|Array.<string|Function>} fn The injectable function to invoke. Function parameters are
+ *   injected according to the {@link guide/di $inject Annotation} rules.
  * @param {Object=} self The `this` for the invoked method.
  * @param {Object=} locals Optional object. If preset then any argument names are read from this
  *                         object first, before the `$injector` is consulted.
@@ -3836,8 +3851,8 @@ function annotate(fn, strictDi, name) {
  * configure your service in a provider.
  *
  * @param {string} name The name of the instance.
- * @param {function()} $getFn The $getFn for the instance creation. Internally this is a short hand
- *                            for `$provide.provider(name, {$get: $getFn})`.
+ * @param {Function|Array.<string|Function>} $getFn The injectable $getFn for the instance creation.
+ *                      Internally this is a short hand for `$provide.provider(name, {$get: $getFn})`.
  * @returns {Object} registered provider instance
  *
  * @example
@@ -3872,7 +3887,8 @@ function annotate(fn, strictDi, name) {
  * as a type/class.
  *
  * @param {string} name The name of the instance.
- * @param {Function} constructor A class (constructor function) that will be instantiated.
+ * @param {Function|Array.<string|Function>} constructor An injectable class (constructor function)
+ *     that will be instantiated.
  * @returns {Object} registered provider instance
  *
  * @example
@@ -3971,7 +3987,7 @@ function annotate(fn, strictDi, name) {
  * object which replaces or wraps and delegates to the original service.
  *
  * @param {string} name The name of the service to decorate.
- * @param {function()} decorator This function will be invoked when the service needs to be
+ * @param {Function|Array.<string|Function>} decorator This function will be invoked when the service needs to be
  *    instantiated and should return the decorated service instance. The function is called using
  *    the {@link auto.$injector#invoke injector.invoke} method and is therefore fully injectable.
  *    Local injection arguments:
@@ -5820,7 +5836,8 @@ function $TemplateCacheProvider() {
  *       templateNamespace: 'html',
  *       scope: false,
  *       controller: function($scope, $element, $attrs, $transclude, otherInjectables) { ... },
- *       controllerAs: 'stringAlias',
+ *       controllerAs: 'stringIdentifier',
+ *       bindToController: false,
  *       require: 'siblingDirectiveName', // or // ['^parentDirectiveName', '?optionalDirectiveName', '?^optionalParent'],
  *       compile: function compile(tElement, tAttrs, transclude) {
  *         return {
@@ -6139,9 +6156,15 @@ function $TemplateCacheProvider() {
  *   * `iAttrs` - instance attributes - Normalized list of attributes declared on this element shared
  *     between all directive linking functions.
  *
- *   * `controller` - a controller instance - A controller instance if at least one directive on the
- *     element defines a controller. The controller is shared among all the directives, which allows
- *     the directives to use the controllers as a communication channel.
+ *   * `controller` - the directive's required controller instance(s) - Instances are shared
+ *     among all directives, which allows the directives to use the controllers as a communication
+ *     channel. The exact value depends on the directive's `require` property:
+ *       * `string`: the controller instance
+ *       * `array`: array of controller instances
+ *       * no controller(s) required: `undefined`
+ *
+ *     If a required controller cannot be found, and it is optional, the instance is `null`,
+ *     otherwise the {@link error:$compile:ctreq Missing Required Controller} error is thrown.
  *
  *   * `transcludeFn` - A transclude linking function pre-bound to the correct transclusion scope.
  *     This is the same as the `$transclude`
@@ -6495,6 +6518,14 @@ function $CompileProvider($provide, $$sanitizeUriProvider) {
     return bindings;
   }
 
+  function assertValidDirectiveName(name) {
+    var letter = name.charAt(0);
+    if (!letter || letter !== lowercase(letter)) {
+      throw $compileMinErr('baddir', "Directive name '{0}' is invalid. The first character must be a lowercase letter", name);
+    }
+    return name;
+  }
+
   /**
    * @ngdoc method
    * @name $compileProvider#directive
@@ -6513,6 +6544,7 @@ function $CompileProvider($provide, $$sanitizeUriProvider) {
    this.directive = function registerDirective(name, directiveFactory) {
     assertNotHasOwnProperty(name, 'directive');
     if (isString(name)) {
+      assertValidDirectiveName(name);
       assertArg(directiveFactory, 'directiveFactory');
       if (!hasDirectives.hasOwnProperty(name)) {
         hasDirectives[name] = [];
@@ -8969,7 +9001,7 @@ function $HttpProvider() {
      *  headers: {
      *    'Content-Type': undefined
      *  },
-     *  data: { test: 'test' },
+     *  data: { test: 'test' }
      * }
      *
      * $http(req).success(function(){...}).error(function(){...});
@@ -9404,6 +9436,8 @@ function $HttpProvider() {
       }
 
       promise.success = function(fn) {
+        assertArgFn(fn, 'fn');
+
         promise.then(function(response) {
           fn(response.data, response.status, response.headers, config);
         });
@@ -9411,6 +9445,8 @@ function $HttpProvider() {
       };
 
       promise.error = function(fn) {
+        assertArgFn(fn, 'fn');
+
         promise.then(null, function(response) {
           fn(response.data, response.status, response.headers, config);
         });
@@ -9891,7 +9927,7 @@ function createHttpBackend($browser, createXhr, $browserDefer, callbacks, rawDoc
   };
 
   function jsonpReq(url, callbackId, done) {
-    // we can't use jQuery/jqLite here because jQuery does crazy shit with script elements, e.g.:
+    // we can't use jQuery/jqLite here because jQuery does crazy stuff with script elements, e.g.:
     // - fetches local scripts via XHR and evals them
     // - adds and immediately removes script elements from the document
     var script = rawDocument.createElement('script'), callback = null;
@@ -10952,11 +10988,19 @@ var locationPrototype = {
    *
    * Return host of current url.
    *
+   * Note: compared to the non-angular version `location.host` which returns `hostname:port`, this returns the `hostname` portion only.
+   *
    *
    * ```js
    * // given url http://example.com/#/some/path?foo=bar&baz=xoxo
    * var host = $location.host();
    * // => "example.com"
+   *
+   * // given url http://user:password@example.com:8080/#/some/path?foo=bar&baz=xoxo
+   * host = $location.host();
+   * // => "example.com"
+   * host = location.host;
+   * // => "example.com:8080"
    * ```
    *
    * @return {string} host of current url.
@@ -13511,7 +13555,7 @@ function $$RAFProvider() { //rAF
                                $window.webkitCancelRequestAnimationFrame;
 
     var rafSupported = !!requestAnimationFrame;
-    var raf = rafSupported
+    var rafFn = rafSupported
       ? function(fn) {
           var id = requestAnimationFrame(fn);
           return function() {
@@ -13525,9 +13569,47 @@ function $$RAFProvider() { //rAF
           };
         };
 
-    raf.supported = rafSupported;
+    queueFn.supported = rafSupported;
 
-    return raf;
+    var cancelLastRAF;
+    var taskCount = 0;
+    var taskQueue = [];
+    return queueFn;
+
+    function flush() {
+      for (var i = 0; i < taskQueue.length; i++) {
+        var task = taskQueue[i];
+        if (task) {
+          taskQueue[i] = null;
+          task();
+        }
+      }
+      taskCount = taskQueue.length = 0;
+    }
+
+    function queueFn(asyncFn) {
+      var index = taskQueue.length;
+
+      taskCount++;
+      taskQueue.push(asyncFn);
+
+      if (index === 0) {
+        cancelLastRAF = rafFn(flush);
+      }
+
+      return function cancelQueueFn() {
+        if (index >= 0) {
+          taskQueue[index] = null;
+          index = null;
+
+          if (--taskCount === 0 && cancelLastRAF) {
+            cancelLastRAF();
+            cancelLastRAF = null;
+            taskQueue.length = 0;
+          }
+        }
+      };
+    }
   }];
 }
 
@@ -13617,7 +13699,6 @@ function $RootScopeProvider() {
           this.$$childHead = this.$$childTail = null;
       this.$$listeners = {};
       this.$$listenerCount = {};
-      this.$$watchersCount = 0;
       this.$id = nextUid();
       this.$$ChildScope = null;
     }
@@ -16508,6 +16589,13 @@ function $WindowProvider() {
  * Dependency Injected. To achieve this a filter definition consists of a factory function which is
  * annotated with dependencies and is responsible for creating a filter function.
  *
+ * <div class="alert alert-warning">
+ * **Note:** Filter names must be valid angular {@link expression} identifiers, such as `uppercase` or `orderBy`.
+ * Names with special characters, such as hyphens and dots, are not allowed. If you wish to namespace
+ * your filters, then you can use capitalization (`myappSubsectionFilterx`) or underscores
+ * (`myapp_subsection_filterx`).
+ * </div>
+ *
  * ```js
  *   // Filter registration
  *   function MyModule($provide, $filterProvider) {
@@ -16589,6 +16677,13 @@ function $FilterProvider($provide) {
    * @name $filterProvider#register
    * @param {string|Object} name Name of the filter function, or an object map of filters where
    *    the keys are the filter names and the values are the filter factories.
+   *
+   *    <div class="alert alert-warning">
+   *    **Note:** Filter names must be valid angular {@link expression} identifiers, such as `uppercase` or `orderBy`.
+   *    Names with special characters, such as hyphens and dots, are not allowed. If you wish to namespace
+   *    your filters, then you can use capitalization (`myappSubsectionFilterx`) or underscores
+   *    (`myapp_subsection_filterx`).
+   *    </div>
    * @returns {Object} Registered filter instance, or if a map of filters was provided then a map
    *    of the registered filter instances.
    */
@@ -16762,14 +16857,16 @@ function filterFilter() {
   return function(array, expression, comparator) {
     if (!isArray(array)) return array;
 
+    var expressionType = (expression !== null) ? typeof expression : 'null';
     var predicateFn;
     var matchAgainstAnyProp;
 
-    switch (typeof expression) {
+    switch (expressionType) {
       case 'function':
         predicateFn = expression;
         break;
       case 'boolean':
+      case 'null':
       case 'number':
       case 'string':
         matchAgainstAnyProp = true;
@@ -16795,6 +16892,14 @@ function createPredicateFn(expression, comparator, matchAgainstAnyProp) {
     comparator = equals;
   } else if (!isFunction(comparator)) {
     comparator = function(actual, expected) {
+      if (isUndefined(actual)) {
+        // No substring matching against `undefined`
+        return false;
+      }
+      if ((actual === null) || (expected === null)) {
+        // No substring matching against `null`; only match against `null`
+        return actual === expected;
+      }
       if (isObject(actual) || isObject(expected)) {
         // Prevent an object to be considered equal to a string like `'[object'`
         return false;
@@ -16945,6 +17050,8 @@ function currencyFilter($locale) {
  * @description
  * Formats a number as text.
  *
+ * If the input is null or undefined, it will just be returned.
+ * If the input is infinite (Infinity/-Infinity) the Infinity symbol '∞' is returned.
  * If the input is not a number an empty string is returned.
  *
  * @param {number|string} number Number to format.
@@ -17553,7 +17660,7 @@ function limitToFilter() {
  *    Can be one of:
  *
  *    - `function`: Getter function. The result of this function will be sorted using the
- *      `<`, `=`, `>` operator.
+ *      `<`, `===`, `>` operator.
  *    - `string`: An Angular expression. The result of this expression is used to compare elements
  *      (for example `name` to sort by a property called `name` or `name.substr(0, 3)` to sort by
  *      3 first characters of a property called `name`). The result of a constant expression
@@ -18664,11 +18771,11 @@ function FormController(element, attrs, $scope, $animate, $interpolate) {
        <form name="myForm" ng-controller="FormController" class="my-form">
          userType: <input name="input" ng-model="userType" required>
          <span class="error" ng-show="myForm.input.$error.required">Required!</span><br>
-         <tt>userType = {{userType}}</tt><br>
-         <tt>myForm.input.$valid = {{myForm.input.$valid}}</tt><br>
-         <tt>myForm.input.$error = {{myForm.input.$error}}</tt><br>
-         <tt>myForm.$valid = {{myForm.$valid}}</tt><br>
-         <tt>myForm.$error.required = {{!!myForm.$error.required}}</tt><br>
+         <code>userType = {{userType}}</code><br>
+         <code>myForm.input.$valid = {{myForm.input.$valid}}</code><br>
+         <code>myForm.input.$error = {{myForm.input.$error}}</code><br>
+         <code>myForm.$valid = {{myForm.$valid}}</code><br>
+         <code>myForm.$error.required = {{!!myForm.$error.required}}</code><br>
         </form>
       </file>
       <file name="protractor.js" type="protractor">
@@ -19356,7 +19463,11 @@ var inputType = {
    * Text input with number validation and transformation. Sets the `number` validation
    * error if not a valid number.
    *
-   * The model must always be a number, otherwise Angular will throw an error.
+   * <div class="alert alert-warning">
+   * The model must always be of type `number` otherwise Angular will throw an error.
+   * Be aware that a string containing a number is not enough. See the {@link ngModel:numfmt}
+   * error docs for more information and an example of how to convert your model if necessary.
+   * </div>
    *
    * @param {string} ngModel Assignable angular expression to data-bind to.
    * @param {string=} name Property name of the form under which the control is published.
@@ -21064,17 +21175,13 @@ var ngClassEvenDirective = classDirective('Even', 1);
  * document; alternatively, the css rule above must be included in the external stylesheet of the
  * application.
  *
- * Legacy browsers, like IE7, do not provide attribute selector support (added in CSS 2.1) so they
- * cannot match the `[ng\:cloak]` selector. To work around this limitation, you must add the css
- * class `ng-cloak` in addition to the `ngCloak` directive as shown in the example below.
- *
  * @element ANY
  *
  * @example
    <example>
      <file name="index.html">
         <div id="template1" ng-cloak>{{ 'hello' }}</div>
-        <div id="template2" ng-cloak class="ng-cloak">{{ 'hello IE7' }}</div>
+        <div id="template2" class="ng-cloak">{{ 'world' }}</div>
      </file>
      <file name="protractor.js" type="protractor">
        it('should remove the template directive and css class', function() {
@@ -23099,7 +23206,7 @@ var NgModelController = ['$scope', '$exceptionHandler', '$attrs', '$element', '$
    * If the validity changes to invalid, the model will be set to `undefined`,
    * unless {@link ngModelOptions `ngModelOptions.allowInvalid`} is `true`.
    * If the validity changes to valid, it will set the model to the last available valid
-   * modelValue, i.e. either the last parsed value or the last value set from the scope.
+   * `$modelValue`, i.e. either the last parsed value or the last value set from the scope.
    */
   this.$validate = function() {
     // ignore $validate before model is initialized
@@ -23407,7 +23514,10 @@ var NgModelController = ['$scope', '$exceptionHandler', '$attrs', '$element', '$
 
     // if scope model value and ngModel value are out of sync
     // TODO(perf): why not move this to the action fn?
-    if (modelValue !== ctrl.$modelValue) {
+    if (modelValue !== ctrl.$modelValue &&
+       // checks for NaN is needed to allow setting the model to NaN when there's an asyncValidator
+       (ctrl.$modelValue === ctrl.$modelValue || modelValue === modelValue)
+    ) {
       ctrl.$modelValue = ctrl.$$rawModelValue = modelValue;
       parserValid = undefined;
 
@@ -23584,10 +23694,11 @@ var NgModelController = ['$scope', '$exceptionHandler', '$attrs', '$element', '$
            var _name = 'Brian';
            $scope.user = {
              name: function(newName) {
-               if (angular.isDefined(newName)) {
-                 _name = newName;
-               }
-               return _name;
+              // Note that newName can be undefined for two reasons:
+              // 1. Because it is called as a getter and thus called with no arguments
+              // 2. Because the property should actually be set to undefined. This happens e.g. if the
+              //    input is invalid
+              return arguments.length ? (_name = newName) : _name;
              }
            };
          }]);
@@ -23795,7 +23906,11 @@ var DEFAULT_REGEXP = /(\s+|^)default(\s+|$)/;
           var _name = 'Brian';
           $scope.user = {
             name: function(newName) {
-              return angular.isDefined(newName) ? (_name = newName) : _name;
+              // Note that newName can be undefined for two reasons:
+              // 1. Because it is called as a getter and thus called with no arguments
+              // 2. Because the property should actually be set to undefined. This happens e.g. if the
+              //    input is invalid
+              return arguments.length ? (_name = newName) : _name;
             }
           };
         }]);
@@ -25085,12 +25200,12 @@ var ngHideDirective = ['$animate', function($animate) {
    </example>
  */
 var ngStyleDirective = ngDirective(function(scope, element, attr) {
-  scope.$watchCollection(attr.ngStyle, function ngStyleWatchAction(newStyles, oldStyles) {
+  scope.$watch(attr.ngStyle, function ngStyleWatchAction(newStyles, oldStyles) {
     if (oldStyles && (newStyles !== oldStyles)) {
       forEach(oldStyles, function(val, style) { element.css(style, '');});
     }
     if (newStyles) element.css(newStyles);
-  });
+  }, true);
 });
 
 /**
@@ -25136,7 +25251,7 @@ var ngStyleDirective = ngDirective(function(scope, element, attr) {
  *
  * @scope
  * @priority 1200
- * @param {*} ngSwitch|on expression to match against <tt>ng-switch-when</tt>.
+ * @param {*} ngSwitch|on expression to match against <code>ng-switch-when</code>.
  * On child elements add:
  *
  * * `ngSwitchWhen`: the case statement to match against. If match then this
@@ -25153,7 +25268,7 @@ var ngStyleDirective = ngDirective(function(scope, element, attr) {
       <div ng-controller="ExampleController">
         <select ng-model="selection" ng-options="item for item in items">
         </select>
-        <tt>selection={{selection}}</tt>
+        <code>selection={{selection}}</code>
         <hr/>
         <div class="animate-switch-container"
           ng-switch on="selection">
@@ -25734,7 +25849,7 @@ var selectDirective = ['$compile', '$parse', function($compile,   $parse) {
             selectElement.val(viewValue);
             if (viewValue === '') emptyOption.prop('selected', true); // to make IE9 happy
           } else {
-            if (isUndefined(viewValue) && emptyOption) {
+            if (viewValue == null && emptyOption) {
               selectElement.val('');
             } else {
               selectCtrl.renderUnknownOption(viewValue);
@@ -28646,7 +28761,7 @@ var toObject = function (o) {
 }));
 
 /**
- * @license AngularJS v1.3.15
+ * @license AngularJS v1.3.16
  * (c) 2010-2014 Google, Inc. http://angularjs.org
  * License: MIT
  */
@@ -29315,7 +29430,7 @@ angular.module('ngResource', ['ng']).
 })(window, window.angular);
 
 /**
- * @license AngularJS v1.3.15
+ * @license AngularJS v1.3.16
  * (c) 2010-2014 Google, Inc. http://angularjs.org
  * License: MIT
  */
@@ -29407,6 +29522,7 @@ angular.module('ngCookies', ['ng']).
         for (name in lastCookies) {
           if (isUndefined(cookies[name])) {
             $browser.cookies(name, undefined);
+            delete lastCookies[name];
           }
         }
 
@@ -29419,13 +29535,13 @@ angular.module('ngCookies', ['ng']).
           }
           if (value !== lastCookies[name]) {
             $browser.cookies(name, value);
+            lastCookies[name] = value;
             updated = true;
           }
         }
 
         //verify what was actually stored
         if (updated) {
-          updated = false;
           browserCookies = $browser.cookies();
 
           for (name in cookies) {
@@ -29433,10 +29549,10 @@ angular.module('ngCookies', ['ng']).
               //delete or reset all cookies that the browser dropped from $cookies
               if (isUndefined(browserCookies[name])) {
                 delete cookies[name];
+                delete lastCookies[name];
               } else {
-                cookies[name] = browserCookies[name];
+                cookies[name] = lastCookies[name] = browserCookies[name];
               }
-              updated = true;
             }
           }
         }
@@ -29522,7 +29638,7 @@ angular.module('ngCookies', ['ng']).
 })(window, window.angular);
 
 /**
- * @license AngularJS v1.3.15
+ * @license AngularJS v1.3.16
  * (c) 2010-2014 Google, Inc. http://angularjs.org
  * License: MIT
  */
@@ -39817,7 +39933,7 @@ angular.module('ui.router.state')
 })();
 
 /**
- * @license AngularJS v1.3.15
+ * @license AngularJS v1.3.16
  * (c) 2010-2014 Google, Inc. http://angularjs.org
  * License: MIT
  */
@@ -40256,9 +40372,11 @@ angular.module('ngAnimate', ['ng'])
         //so that all the animated elements within the animation frame
         //will be properly updated and drawn on screen. This is
         //required to perform multi-class CSS based animations with
-        //Firefox. DO NOT REMOVE THIS LINE.
-        var a = bod.offsetWidth + 1;
-        fn();
+        //Firefox. DO NOT REMOVE THIS LINE. DO NOT OPTIMIZE THIS LINE.
+        //THE MINIFIER WILL REMOVE IT OTHERWISE WHICH WILL RESULT IN AN
+        //UNPREDICTABLE BUG THAT IS VERY HARD TO TRACK DOWN AND WILL
+        //TAKE YEARS AWAY FROM YOUR LIFE!
+        fn(bod.offsetWidth);
       });
     };
   }])
@@ -56958,6 +57076,4273 @@ $templateCache.put("selectize/select.tpl.html","<div class=\"ui-select-container
             }]
     );
 })(window, document);
+/**
+ * @license Angular UI Tree v2.5.0
+ * (c) 2010-2015. https://github.com/angular-ui-tree/angular-ui-tree
+ * License: MIT
+ */
+(function () {
+  'use strict';
+
+  angular.module('ui.tree', [])
+    .constant('treeConfig', {
+      treeClass: 'angular-ui-tree',
+      emptyTreeClass: 'angular-ui-tree-empty',
+      hiddenClass: 'angular-ui-tree-hidden',
+      nodesClass: 'angular-ui-tree-nodes',
+      nodeClass: 'angular-ui-tree-node',
+      handleClass: 'angular-ui-tree-handle',
+      placeholderClass: 'angular-ui-tree-placeholder',
+      dragClass: 'angular-ui-tree-drag',
+      dragThreshold: 3,
+      levelThreshold: 30
+    });
+
+})();
+
+(function () {
+  'use strict';
+
+  angular.module('ui.tree')
+
+    .controller('TreeHandleController', ['$scope', '$element',
+      function ($scope, $element) {
+        this.scope = $scope;
+
+        $scope.$element = $element;
+        $scope.$nodeScope = null;
+        $scope.$type = 'uiTreeHandle';
+
+      }
+    ]);
+})();
+
+(function () {
+  'use strict';
+
+  angular.module('ui.tree')
+    .controller('TreeNodeController', ['$scope', '$element',
+      function ($scope, $element) {
+        this.scope = $scope;
+
+        $scope.$element = $element;
+        $scope.$modelValue = null; // Model value for node;
+        $scope.$parentNodeScope = null; // uiTreeNode Scope of parent node;
+        $scope.$childNodesScope = null; // uiTreeNodes Scope of child nodes.
+        $scope.$parentNodesScope = null; // uiTreeNodes Scope of parent nodes.
+        $scope.$treeScope = null; // uiTree scope
+        $scope.$handleScope = null; // it's handle scope
+        $scope.$type = 'uiTreeNode';
+        $scope.$$apply = false;
+        $scope.collapsed = false;
+
+        $scope.init = function (controllersArr) {
+          var treeNodesCtrl = controllersArr[0];
+          $scope.$treeScope = controllersArr[1] ? controllersArr[1].scope : null;
+
+          // find the scope of it's parent node
+          $scope.$parentNodeScope = treeNodesCtrl.scope.$nodeScope;
+          // modelValue for current node
+          $scope.$modelValue = treeNodesCtrl.scope.$modelValue[$scope.$index];
+          $scope.$parentNodesScope = treeNodesCtrl.scope;
+          treeNodesCtrl.scope.initSubNode($scope); // init sub nodes
+
+          $element.on('$destroy', function () {
+            treeNodesCtrl.scope.destroySubNode($scope); // destroy sub nodes
+          });
+        };
+
+        $scope.index = function () {
+          return $scope.$parentNodesScope.$modelValue.indexOf($scope.$modelValue);
+        };
+
+        $scope.dragEnabled = function () {
+          return !($scope.$treeScope && !$scope.$treeScope.dragEnabled);
+        };
+
+        $scope.isSibling = function (targetNode) {
+          return $scope.$parentNodesScope == targetNode.$parentNodesScope;
+        };
+
+        $scope.isChild = function (targetNode) {
+          var nodes = $scope.childNodes();
+          return nodes && nodes.indexOf(targetNode) > -1;
+        };
+
+        $scope.prev = function () {
+          var index = $scope.index();
+          if (index > 0) {
+            return $scope.siblings()[index - 1];
+          }
+          return null;
+        };
+
+        $scope.siblings = function () {
+          return $scope.$parentNodesScope.childNodes();
+        };
+
+        $scope.childNodesCount = function () {
+          return $scope.childNodes() ? $scope.childNodes().length : 0;
+        };
+
+        $scope.hasChild = function () {
+          return $scope.childNodesCount() > 0;
+        };
+
+        $scope.childNodes = function () {
+          return $scope.$childNodesScope && $scope.$childNodesScope.$modelValue ?
+            $scope.$childNodesScope.childNodes() :
+            null;
+        };
+
+        $scope.accept = function (sourceNode, destIndex) {
+          return $scope.$childNodesScope &&
+            $scope.$childNodesScope.$modelValue &&
+            $scope.$childNodesScope.accept(sourceNode, destIndex);
+        };
+
+        $scope.removeNode = function () {
+          var node = $scope.remove();
+          $scope.$callbacks.removed(node);
+          return node;
+        };
+
+        $scope.remove = function () {
+          return $scope.$parentNodesScope.removeNode($scope);
+        };
+
+        $scope.toggle = function () {
+          $scope.collapsed = !$scope.collapsed;
+        };
+
+        $scope.collapse = function () {
+          $scope.collapsed = true;
+        };
+
+        $scope.expand = function () {
+          $scope.collapsed = false;
+        };
+
+        $scope.depth = function () {
+          var parentNode = $scope.$parentNodeScope;
+          if (parentNode) {
+            return parentNode.depth() + 1;
+          }
+          return 1;
+        };
+
+        var subDepth = 0;
+        function countSubDepth(scope) {
+          var i, childNodes,
+              count = 0,
+              nodes = scope.childNodes();
+
+          for (i = 0; i < nodes.length; i++) {
+            childNodes = nodes[i].$childNodesScope;
+
+            if (childNodes && childNodes.childNodesCount() > 0) {
+              count = 1;
+              countSubDepth(childNodes);
+            }
+          }
+          subDepth += count;
+        }
+
+        $scope.maxSubDepth = function () {
+          subDepth = 0;
+          if ($scope.$childNodesScope) {
+            countSubDepth($scope.$childNodesScope);
+          }
+          return subDepth;
+        };
+
+      }
+    ]);
+})();
+
+(function () {
+  'use strict';
+
+  angular.module('ui.tree')
+
+    .controller('TreeNodesController', ['$scope', '$element',
+      function ($scope, $element) {
+        this.scope = $scope;
+
+        $scope.$element = $element;
+        $scope.$modelValue = null;
+        $scope.$nodeScope = null; // the scope of node which the nodes belongs to
+        $scope.$treeScope = null;
+        $scope.$type = 'uiTreeNodes';
+        $scope.$nodesMap = {};
+
+        $scope.nodropEnabled = false;
+        $scope.maxDepth = 0;
+        $scope.cloneEnabled = false;
+
+        $scope.initSubNode = function (subNode) {
+          if (!subNode.$modelValue) {
+            return null;
+          }
+          $scope.$nodesMap[subNode.$modelValue.$$hashKey] = subNode;
+        };
+
+        $scope.destroySubNode = function (subNode) {
+          if (!subNode.$modelValue) {
+            return null;
+          }
+          $scope.$nodesMap[subNode.$modelValue.$$hashKey] = null;
+        };
+
+        $scope.accept = function (sourceNode, destIndex) {
+          return $scope.$treeScope.$callbacks.accept(sourceNode, $scope, destIndex);
+        };
+
+        $scope.beforeDrag = function (sourceNode) {
+          return $scope.$treeScope.$callbacks.beforeDrag(sourceNode);
+        };
+
+        $scope.isParent = function (node) {
+          return node.$parentNodesScope == $scope;
+        };
+
+        $scope.hasChild = function () {
+          return $scope.$modelValue.length > 0;
+        };
+
+        $scope.safeApply = function (fn) {
+          var phase = this.$root.$$phase;
+          if (phase == '$apply' || phase == '$digest') {
+            if (fn && (typeof (fn) === 'function')) {
+              fn();
+            }
+          } else {
+            this.$apply(fn);
+          }
+        };
+
+        $scope.removeNode = function (node) {
+          var index = $scope.$modelValue.indexOf(node.$modelValue);
+          if (index > -1) {
+            $scope.safeApply(function () {
+              $scope.$modelValue.splice(index, 1)[0];
+            });
+            return node;
+          }
+          return null;
+        };
+
+        $scope.insertNode = function (index, nodeData) {
+          $scope.safeApply(function () {
+            $scope.$modelValue.splice(index, 0, nodeData);
+          });
+        };
+
+        $scope.childNodes = function () {
+          var i, nodes = [];
+          if ($scope.$modelValue) {
+            for (i = 0; i < $scope.$modelValue.length; i++) {
+              nodes.push($scope.$nodesMap[$scope.$modelValue[i].$$hashKey]);
+            }
+          }
+          return nodes;
+        };
+
+        $scope.depth = function () {
+          if ($scope.$nodeScope) {
+            return $scope.$nodeScope.depth();
+          }
+          return 0; // if it has no $nodeScope, it's root
+        };
+
+        // check if depth limit has reached
+        $scope.outOfDepth = function (sourceNode) {
+          var maxDepth = $scope.maxDepth || $scope.$treeScope.maxDepth;
+          if (maxDepth > 0) {
+            return $scope.depth() + sourceNode.maxSubDepth() + 1 > maxDepth;
+          }
+          return false;
+        };
+
+      }
+    ]);
+})();
+
+(function () {
+  'use strict';
+
+  angular.module('ui.tree')
+
+    .controller('TreeController', ['$scope', '$element',
+      function ($scope, $element) {
+        this.scope = $scope;
+
+        $scope.$element = $element;
+        $scope.$nodesScope = null; // root nodes
+        $scope.$type = 'uiTree';
+        $scope.$emptyElm = null;
+        $scope.$callbacks = null;
+
+        $scope.dragEnabled = true;
+        $scope.emptyPlaceholderEnabled = true;
+        $scope.maxDepth = 0;
+        $scope.dragDelay = 0;
+        $scope.cloneEnabled = false;
+        $scope.nodropEnabled = false;
+
+        // Check if it's a empty tree
+        $scope.isEmpty = function () {
+          return ($scope.$nodesScope && $scope.$nodesScope.$modelValue
+          && $scope.$nodesScope.$modelValue.length === 0);
+        };
+
+        // add placeholder to empty tree
+        $scope.place = function (placeElm) {
+          $scope.$nodesScope.$element.append(placeElm);
+          $scope.$emptyElm.remove();
+        };
+
+        this.resetEmptyElement = function () {
+          if ((!$scope.$nodesScope.$modelValue || $scope.$nodesScope.$modelValue.length === 0) &&
+            $scope.emptyPlaceholderEnabled) {
+            $element.append($scope.$emptyElm);
+          } else {
+            $scope.$emptyElm.remove();
+          }
+        };
+
+        $scope.resetEmptyElement = this.resetEmptyElement;
+
+        var collapseOrExpand = function (scope, collapsed) {
+          var i, subScope,
+              nodes = scope.childNodes();
+          for (i = 0; i < nodes.length; i++) {
+            collapsed ? nodes[i].collapse() : nodes[i].expand();
+            subScope = nodes[i].$childNodesScope;
+            if (subScope) {
+              collapseOrExpand(subScope, collapsed);
+            }
+          }
+        };
+
+        $scope.collapseAll = function () {
+          collapseOrExpand($scope.$nodesScope, true);
+        };
+
+        $scope.expandAll = function () {
+          collapseOrExpand($scope.$nodesScope, false);
+        };
+
+      }
+    ]);
+})();
+
+(function () {
+  'use strict';
+
+  angular.module('ui.tree')
+    .directive('uiTree', ['treeConfig', '$window',
+      function (treeConfig, $window) {
+        return {
+          restrict: 'A',
+          scope: true,
+          controller: 'TreeController',
+          link: function (scope, element, attrs, ctrl) {
+            var callbacks = {
+              accept: null,
+              beforeDrag: null
+            },
+              config = {};
+
+            angular.extend(config, treeConfig);
+            if (config.treeClass) {
+              element.addClass(config.treeClass);
+            }
+
+            scope.$emptyElm = angular.element($window.document.createElement('div'));
+            if (config.emptyTreeClass) {
+              scope.$emptyElm.addClass(config.emptyTreeClass);
+            }
+
+            scope.$watch('$nodesScope.$modelValue.length', function () {
+              if (!scope.$nodesScope.$modelValue) {
+                return;
+              }
+
+              ctrl.resetEmptyElement();
+            }, true);
+
+            scope.$watch(attrs.dragEnabled, function (val) {
+              if ((typeof val) == 'boolean') {
+                scope.dragEnabled = val;
+              }
+            });
+
+            scope.$watch(attrs.emptyPlaceholderEnabled, function (val) {
+              if ((typeof val) == 'boolean') {
+                scope.emptyPlaceholderEnabled = val;
+                ctrl.resetEmptyElement();
+              }
+            });
+
+            scope.$watch(attrs.nodropEnabled, function (val) {
+              if ((typeof val) == 'boolean') {
+                scope.nodropEnabled = val;
+              }
+            });
+
+            scope.$watch(attrs.cloneEnabled, function (val) {
+              if ((typeof val) == 'boolean') {
+                scope.cloneEnabled = val;
+              }
+            });
+
+            scope.$watch(attrs.maxDepth, function (val) {
+              if ((typeof val) == 'number') {
+                scope.maxDepth = val;
+              }
+            });
+
+            scope.$watch(attrs.dragDelay, function (val) {
+              if ((typeof val) == 'number') {
+                scope.dragDelay = val;
+              }
+            });
+
+            // check if the dest node can accept the dragging node
+            // by default, we check the 'data-nodrop-enabled' attribute in `ui-tree-nodes`
+            // and the 'max-depth' attribute in `ui-tree` or `ui-tree-nodes`.
+            // the method can be overrided
+            callbacks.accept = function (sourceNodeScope, destNodesScope, destIndex) {
+              if (destNodesScope.nodropEnabled || destNodesScope.outOfDepth(sourceNodeScope)) {
+                return false;
+              }
+              return true;
+            };
+
+            callbacks.beforeDrag = function (sourceNodeScope) {
+              return true;
+            };
+
+            callbacks.removed = function (node) {
+
+            };
+
+            callbacks.dropped = function (event) {
+
+            };
+
+            callbacks.dragStart = function (event) {
+
+            };
+
+            callbacks.dragMove = function (event) {
+
+            };
+
+            callbacks.dragStop = function (event) {
+
+            };
+
+            callbacks.beforeDrop = function (event) {
+
+            };
+
+            scope.$watch(attrs.uiTree, function (newVal, oldVal) {
+              angular.forEach(newVal, function (value, key) {
+                if (callbacks[key]) {
+                  if (typeof value === 'function') {
+                    callbacks[key] = value;
+                  }
+                }
+              });
+
+              scope.$callbacks = callbacks;
+            }, true);
+
+
+          }
+        };
+      }
+    ]);
+})();
+
+(function () {
+  'use strict';
+
+  angular.module('ui.tree')
+    .directive('uiTreeHandle', ['treeConfig',
+      function (treeConfig) {
+        return {
+          require: '^uiTreeNode',
+          restrict: 'A',
+          scope: true,
+          controller: 'TreeHandleController',
+          link: function (scope, element, attrs, treeNodeCtrl) {
+            var config = {};
+            angular.extend(config, treeConfig);
+            if (config.handleClass) {
+              element.addClass(config.handleClass);
+            }
+            // connect with the tree node.
+            if (scope != treeNodeCtrl.scope) {
+              scope.$nodeScope = treeNodeCtrl.scope;
+              treeNodeCtrl.scope.$handleScope = scope;
+            }
+          }
+        };
+      }
+    ]);
+})();
+
+(function () {
+  'use strict';
+
+  angular.module('ui.tree')
+
+    .directive('uiTreeNode', ['treeConfig', '$uiTreeHelper', '$window', '$document', '$timeout',
+      function (treeConfig, $uiTreeHelper, $window, $document, $timeout) {
+        return {
+          require: ['^uiTreeNodes', '^uiTree'],
+          restrict: 'A',
+          controller: 'TreeNodeController',
+          link: function (scope, element, attrs, controllersArr) {
+            // todo startPos is unused
+            var config = {},
+              hasTouch = 'ontouchstart' in window,
+              startPos, firstMoving, dragInfo, pos,
+              placeElm, hiddenPlaceElm, dragElm,
+              treeScope = null,
+              elements, // As a parameter for callbacks
+              dragDelaying = true,
+              dragStarted = false,
+              dragTimer = null,
+              body = document.body,
+              html = document.documentElement,
+              document_height,
+              document_width,
+              dragStart,
+              tagName,
+              dragMove,
+              dragEnd,
+              dragStartEvent,
+              dragMoveEvent,
+              dragEndEvent,
+              dragCancelEvent,
+              dragDelay,
+              bindDrag,
+              keydownHandler;
+            angular.extend(config, treeConfig);
+            if (config.nodeClass) {
+              element.addClass(config.nodeClass);
+            }
+            scope.init(controllersArr);
+
+            scope.collapsed = !!$uiTreeHelper.getNodeAttribute(scope, 'collapsed');
+
+            scope.$watch(attrs.collapsed, function (val) {
+              if ((typeof val) == 'boolean') {
+                scope.collapsed = val;
+              }
+            });
+
+            scope.$watch('collapsed', function (val) {
+              $uiTreeHelper.setNodeAttribute(scope, 'collapsed', val);
+              attrs.$set('collapsed', val);
+            });
+
+            dragStart = function (e) {
+              if (!hasTouch && (e.button == 2 || e.which == 3)) {
+                // disable right click
+                return;
+              }
+              if (e.uiTreeDragging || (e.originalEvent && e.originalEvent.uiTreeDragging)) { // event has already fired in other scope.
+                return;
+              }
+
+              // the element which is clicked.
+              var eventElm = angular.element(e.target),
+                eventScope = eventElm.scope(),
+                eventElmTagName, tagName,
+                eventObj, tdElm, hStyle;
+              if (!eventScope || !eventScope.$type) {
+                return;
+              }
+              if (eventScope.$type != 'uiTreeNode'
+                && eventScope.$type != 'uiTreeHandle') { // Check if it is a node or a handle
+                return;
+              }
+              if (eventScope.$type == 'uiTreeNode'
+                && eventScope.$handleScope) { // If the node has a handle, then it should be clicked by the handle
+                return;
+              }
+
+              eventElmTagName = eventElm.prop('tagName').toLowerCase();
+              if (eventElmTagName == 'input' ||
+                eventElmTagName == 'textarea' ||
+                eventElmTagName == 'button' ||
+                eventElmTagName == 'select') { // if it's a input or button, ignore it
+                return;
+              }
+
+              // check if it or it's parents has a 'data-nodrag' attribute
+              while (eventElm && eventElm[0] && eventElm[0] != element) {
+                if ($uiTreeHelper.nodrag(eventElm)) { // if the node mark as `nodrag`, DONOT drag it.
+                  return;
+                }
+                eventElm = eventElm.parent();
+              }
+
+              if (!scope.beforeDrag(scope)) {
+                return;
+              }
+
+              e.uiTreeDragging = true; // stop event bubbling
+              if (e.originalEvent) {
+                e.originalEvent.uiTreeDragging = true;
+              }
+              e.preventDefault();
+              eventObj = $uiTreeHelper.eventObj(e);
+
+              firstMoving = true;
+              dragInfo = $uiTreeHelper.dragInfo(scope);
+
+              // Fire dragStart callback
+              scope.$apply(function () {
+                scope.$treeScope.$callbacks.dragStart(dragInfo.eventArgs(elements, pos));
+              });
+
+              tagName = scope.$element.prop('tagName');
+
+              if (tagName.toLowerCase() === 'tr') {
+                placeElm = angular.element($window.document.createElement(tagName));
+                tdElm = angular.element($window.document.createElement('td'))
+                  .addClass(config.placeholderClass);
+                placeElm.append(tdElm);
+              } else {
+                placeElm = angular.element($window.document.createElement(tagName))
+                  .addClass(config.placeholderClass);
+              }
+              hiddenPlaceElm = angular.element($window.document.createElement(tagName));
+              if (config.hiddenClass) {
+                hiddenPlaceElm.addClass(config.hiddenClass);
+              }
+              pos = $uiTreeHelper.positionStarted(eventObj, scope.$element);
+              placeElm.css('height', $uiTreeHelper.height(scope.$element) + 'px');
+              dragElm = angular.element($window.document.createElement(scope.$parentNodesScope.$element.prop('tagName')))
+                .addClass(scope.$parentNodesScope.$element.attr('class')).addClass(config.dragClass);
+              dragElm.css('width', $uiTreeHelper.width(scope.$element) + 'px');
+              dragElm.css('z-index', 9999);
+
+              // Prevents cursor to change rapidly in Opera 12.16 and IE when dragging an element
+              hStyle = (scope.$element[0].querySelector('.angular-ui-tree-handle') || scope.$element[0]).currentStyle;
+              if (hStyle) {
+                document.body.setAttribute('ui-tree-cursor', $document.find('body').css('cursor') || '');
+                $document.find('body').css({'cursor': hStyle.cursor + '!important'});
+              }
+
+              scope.$element.after(placeElm);
+              scope.$element.after(hiddenPlaceElm);
+              dragElm.append(scope.$element);
+              $document.find('body').append(dragElm);
+              dragElm.css({
+                'left': eventObj.pageX - pos.offsetX + 'px',
+                'top': eventObj.pageY - pos.offsetY + 'px'
+              });
+              elements = {
+                placeholder: placeElm,
+                dragging: dragElm
+              };
+
+              angular.element($document).bind('touchend', dragEndEvent);
+              angular.element($document).bind('touchcancel', dragEndEvent);
+              angular.element($document).bind('touchmove', dragMoveEvent);
+              angular.element($document).bind('mouseup', dragEndEvent);
+              angular.element($document).bind('mousemove', dragMoveEvent);
+              angular.element($document).bind('mouseleave', dragCancelEvent);
+
+              document_height = Math.max(body.scrollHeight, body.offsetHeight, html.clientHeight, html.scrollHeight, html.offsetHeight);
+              document_width = Math.max(body.scrollWidth, body.offsetWidth, html.clientWidth, html.scrollWidth, html.offsetWidth);
+            };
+
+            dragMove = function (e) {
+              var eventObj = $uiTreeHelper.eventObj(e),
+                prev,
+                next,
+                leftElmPos,
+                topElmPos,
+                top_scroll,
+                bottom_scroll,
+                target,
+                decrease,
+                targetX,
+                targetY,
+                displayElm,
+                targetNode,
+                targetElm,
+                isEmpty,
+                targetOffset,
+                targetBefore;
+
+              if (dragElm) {
+                e.preventDefault();
+
+                if ($window.getSelection) {
+                  $window.getSelection().removeAllRanges();
+                } else if ($window.document.selection) {
+                  $window.document.selection.empty();
+                }
+
+                leftElmPos = eventObj.pageX - pos.offsetX;
+                topElmPos = eventObj.pageY - pos.offsetY;
+
+                //dragElm can't leave the screen on the left
+                if (leftElmPos < 0) {
+                  leftElmPos = 0;
+                }
+
+                //dragElm can't leave the screen on the top
+                if (topElmPos < 0) {
+                  topElmPos = 0;
+                }
+
+                //dragElm can't leave the screen on the bottom
+                if ((topElmPos + 10) > document_height) {
+                  topElmPos = document_height - 10;
+                }
+
+                //dragElm can't leave the screen on the right
+                if ((leftElmPos + 10) > document_width) {
+                  leftElmPos = document_width - 10;
+                }
+
+                dragElm.css({
+                  'left': leftElmPos + 'px',
+                  'top': topElmPos + 'px'
+                });
+
+                top_scroll = window.pageYOffset || $window.document.documentElement.scrollTop;
+                bottom_scroll = top_scroll + (window.innerHeight || $window.document.clientHeight || $window.document.clientHeight);
+
+                // to scroll down if cursor y-position is greater than the bottom position the vertical scroll
+                if (bottom_scroll < eventObj.pageY && bottom_scroll <= document_height) {
+                  window.scrollBy(0, 10);
+                }
+
+                // to scroll top if cursor y-position is less than the top position the vertical scroll
+                if (top_scroll > eventObj.pageY) {
+                  window.scrollBy(0, -10);
+                }
+
+                $uiTreeHelper.positionMoved(e, pos, firstMoving);
+                if (firstMoving) {
+                  firstMoving = false;
+                  return;
+                }
+
+                // move horizontal
+                if (pos.dirAx && pos.distAxX >= config.levelThreshold) {
+                  pos.distAxX = 0;
+
+                  // increase horizontal level if previous sibling exists and is not collapsed
+                  if (pos.distX > 0) {
+                    prev = dragInfo.prev();
+                    if (prev && !prev.collapsed
+                      && prev.accept(scope, prev.childNodesCount())) {
+                      prev.$childNodesScope.$element.append(placeElm);
+                      dragInfo.moveTo(prev.$childNodesScope, prev.childNodes(), prev.childNodesCount());
+                    }
+                  }
+
+                  // decrease horizontal level
+                  if (pos.distX < 0) {
+                    // we can't decrease a level if an item preceeds the current one
+                    next = dragInfo.next();
+                    if (!next) {
+                      target = dragInfo.parentNode(); // As a sibling of it's parent node
+                      if (target
+                        && target.$parentNodesScope.accept(scope, target.index() + 1)) {
+                        target.$element.after(placeElm);
+                        dragInfo.moveTo(target.$parentNodesScope, target.siblings(), target.index() + 1);
+                      }
+                    }
+                  }
+                }
+
+                // check if add it as a child node first
+                // todo decrease is unused
+                decrease = ($uiTreeHelper.offset(dragElm).left - $uiTreeHelper.offset(placeElm).left) >= config.threshold;
+                targetX = eventObj.pageX - $window.document.body.scrollLeft;
+                targetY = eventObj.pageY - (window.pageYOffset || $window.document.documentElement.scrollTop);
+
+                // Select the drag target. Because IE does not support CSS 'pointer-events: none', it will always
+                // pick the drag element itself as the target. To prevent this, we hide the drag element while
+                // selecting the target.
+                if (angular.isFunction(dragElm.hide)) {
+                  dragElm.hide();
+                } else {
+                  displayElm = dragElm[0].style.display;
+                  dragElm[0].style.display = 'none';
+                }
+
+                // when using elementFromPoint() inside an iframe, you have to call
+                // elementFromPoint() twice to make sure IE8 returns the correct value
+                $window.document.elementFromPoint(targetX, targetY);
+
+                targetElm = angular.element($window.document.elementFromPoint(targetX, targetY));
+                if (angular.isFunction(dragElm.show)) {
+                  dragElm.show();
+                } else {
+                  dragElm[0].style.display = displayElm;
+                }
+
+                // move vertical
+                if (!pos.dirAx) {
+                  // check it's new position
+                  targetNode = targetElm.scope();
+                  isEmpty = false;
+                  if (!targetNode) {
+                    return;
+                  }
+
+                  if (targetNode.$type == 'uiTree' && targetNode.dragEnabled) {
+                    isEmpty = targetNode.isEmpty(); // Check if it's empty tree
+                  }
+
+                  if (targetNode.$type == 'uiTreeHandle') {
+                    targetNode = targetNode.$nodeScope;
+                  }
+
+                  if (targetNode.$type != 'uiTreeNode'
+                    && !isEmpty) { // Check if it is a uiTreeNode or it's an empty tree
+                    return;
+                  }
+
+                  // if placeholder move from empty tree, reset it.
+                  if (treeScope && placeElm.parent()[0] != treeScope.$element[0]) {
+                    treeScope.resetEmptyElement();
+                    treeScope = null;
+                  }
+
+                  if (isEmpty) { // it's an empty tree
+                    treeScope = targetNode;
+                    if (targetNode.$nodesScope.accept(scope, 0)) {
+                      targetNode.place(placeElm);
+                      dragInfo.moveTo(targetNode.$nodesScope, targetNode.$nodesScope.childNodes(), 0);
+                    }
+                  } else if (targetNode.dragEnabled()) { // drag enabled
+                    targetElm = targetNode.$element; // Get the element of ui-tree-node
+                    targetOffset = $uiTreeHelper.offset(targetElm);
+                    targetBefore = targetNode.horizontal ? eventObj.pageX < (targetOffset.left + $uiTreeHelper.width(targetElm) / 2)
+                      : eventObj.pageY < (targetOffset.top + $uiTreeHelper.height(targetElm) / 2);
+
+                    if (targetNode.$parentNodesScope.accept(scope, targetNode.index())) {
+                      if (targetBefore) {
+                        targetElm[0].parentNode.insertBefore(placeElm[0], targetElm[0]);
+                        dragInfo.moveTo(targetNode.$parentNodesScope, targetNode.siblings(), targetNode.index());
+                      } else {
+                        targetElm.after(placeElm);
+                        dragInfo.moveTo(targetNode.$parentNodesScope, targetNode.siblings(), targetNode.index() + 1);
+                      }
+                    } else if (!targetBefore && targetNode.accept(scope, targetNode.childNodesCount())) { // we have to check if it can add the dragging node as a child
+                      targetNode.$childNodesScope.$element.append(placeElm);
+                      dragInfo.moveTo(targetNode.$childNodesScope, targetNode.childNodes(), targetNode.childNodesCount());
+                    }
+                  }
+
+                }
+
+                scope.$apply(function () {
+                  scope.$treeScope.$callbacks.dragMove(dragInfo.eventArgs(elements, pos));
+                });
+              }
+            };
+
+            dragEnd = function (e) {
+              e.preventDefault();
+
+              if (dragElm) {
+                scope.$treeScope.$apply(function () {
+                  scope.$treeScope.$callbacks.beforeDrop(dragInfo.eventArgs(elements, pos));
+                });
+                // roll back elements changed
+                hiddenPlaceElm.replaceWith(scope.$element);
+                placeElm.remove();
+
+                dragElm.remove();
+                dragElm = null;
+                if (scope.$$apply) {
+                  scope.$treeScope.$apply(function () {
+                    dragInfo.apply();
+                    scope.$treeScope.$callbacks.dropped(dragInfo.eventArgs(elements, pos));
+                  });
+                } else {
+                  bindDrag();
+                }
+                scope.$treeScope.$apply(function () {
+                  scope.$treeScope.$callbacks.dragStop(dragInfo.eventArgs(elements, pos));
+                });
+                scope.$$apply = false;
+                dragInfo = null;
+
+              }
+
+              // Restore cursor in Opera 12.16 and IE
+              var oldCur = document.body.getAttribute('ui-tree-cursor');
+              if (oldCur !== null) {
+                $document.find('body').css({'cursor': oldCur});
+                document.body.removeAttribute('ui-tree-cursor');
+              }
+
+              angular.element($document).unbind('touchend', dragEndEvent); // Mobile
+              angular.element($document).unbind('touchcancel', dragEndEvent); // Mobile
+              angular.element($document).unbind('touchmove', dragMoveEvent); // Mobile
+              angular.element($document).unbind('mouseup', dragEndEvent);
+              angular.element($document).unbind('mousemove', dragMoveEvent);
+              angular.element($window.document.body).unbind('mouseleave', dragCancelEvent);
+            };
+
+            dragStartEvent = function (e) {
+              if (scope.dragEnabled()) {
+                dragStart(e);
+              }
+            };
+
+            dragMoveEvent = function (e) {
+              dragMove(e);
+            };
+
+            dragEndEvent = function (e) {
+              scope.$$apply = true;
+              dragEnd(e);
+            };
+
+            dragCancelEvent = function (e) {
+              dragEnd(e);
+            };
+
+            dragDelay = (function () {
+              var to;
+
+              return {
+                exec: function (fn, ms) {
+                  if (!ms) {
+                    ms = 0;
+                  }
+                  this.cancel();
+                  to = $timeout(fn, ms);
+                },
+                cancel: function () {
+                  $timeout.cancel(to);
+                }
+              };
+            })();
+
+            bindDrag = function () {
+              element.bind('touchstart mousedown', function (e) {
+                dragDelay.exec(function () {
+                  dragStartEvent(e);
+                }, scope.dragDelay || 0);
+              });
+              element.bind('touchend touchcancel mouseup', function () {
+                dragDelay.cancel();
+              });
+            };
+            bindDrag();
+
+            keydownHandler = function (e) {
+              if (e.keyCode == 27) {
+                scope.$$apply = false;
+                dragEnd(e);
+              }
+            };
+
+            angular.element($window.document.body).bind('keydown', keydownHandler);
+
+            //unbind handler that retains scope
+            scope.$on('$destroy', function () {
+              angular.element($window.document.body).unbind('keydown', keydownHandler);
+            });
+          }
+        };
+      }
+    ]);
+
+})();
+
+(function () {
+  'use strict';
+
+  angular.module('ui.tree')
+    .directive('uiTreeNodes', ['treeConfig', '$window',
+      function (treeConfig) {
+        return {
+          require: ['ngModel', '?^uiTreeNode', '^uiTree'],
+          restrict: 'A',
+          scope: true,
+          controller: 'TreeNodesController',
+          link: function (scope, element, attrs, controllersArr) {
+
+            var config = {},
+                ngModel = controllersArr[0],
+                treeNodeCtrl = controllersArr[1],
+                treeCtrl = controllersArr[2];
+
+            angular.extend(config, treeConfig);
+            if (config.nodesClass) {
+              element.addClass(config.nodesClass);
+            }
+
+            if (treeNodeCtrl) {
+              treeNodeCtrl.scope.$childNodesScope = scope;
+              scope.$nodeScope = treeNodeCtrl.scope;
+            } else {
+              // find the root nodes if there is no parent node and have a parent ui-tree
+              treeCtrl.scope.$nodesScope = scope;
+            }
+            scope.$treeScope = treeCtrl.scope;
+
+            if (ngModel) {
+              ngModel.$render = function () {
+                if (!ngModel.$modelValue || !angular.isArray(ngModel.$modelValue)) {
+                  scope.$modelValue = [];
+                }
+                scope.$modelValue = ngModel.$modelValue;
+              };
+            }
+
+            scope.$watch(attrs.maxDepth, function (val) {
+              if ((typeof val) == 'number') {
+                scope.maxDepth = val;
+              }
+            });
+
+            scope.$watch(function () {
+              return attrs.nodropEnabled;
+            }, function (newVal) {
+              if ((typeof newVal) != 'undefined') {
+                scope.nodropEnabled = true;
+              }
+            }, true);
+
+            attrs.$observe('horizontal', function (val) {
+              scope.horizontal = ((typeof val) != 'undefined');
+            });
+
+          }
+        };
+      }
+    ]);
+})();
+
+(function () {
+  'use strict';
+
+  angular.module('ui.tree')
+
+  /**
+   * @ngdoc service
+   * @name ui.tree.service:$helper
+   * @requires ng.$document
+   * @requires ng.$window
+   *
+   * @description
+   * angular-ui-tree.
+   */
+    .factory('$uiTreeHelper', ['$document', '$window',
+      function ($document, $window) {
+        return {
+
+          /**
+           * A hashtable used to storage data of nodes
+           * @type {Object}
+           */
+          nodesData: {},
+
+          setNodeAttribute: function (scope, attrName, val) {
+            if (!scope.$modelValue) {
+              return null;
+            }
+            var data = this.nodesData[scope.$modelValue.$$hashKey];
+            if (!data) {
+              data = {};
+              this.nodesData[scope.$modelValue.$$hashKey] = data;
+            }
+            data[attrName] = val;
+          },
+
+          getNodeAttribute: function (scope, attrName) {
+            if (!scope.$modelValue) {
+              return null;
+            }
+            var data = this.nodesData[scope.$modelValue.$$hashKey];
+            if (data) {
+              return data[attrName];
+            }
+            return null;
+          },
+
+          /**
+           * @ngdoc method
+           * @methodOf ui.tree.service:$nodrag
+           * @param  {Object} targetElm angular element
+           * @return {Bool} check if the node can be dragged.
+           */
+          nodrag: function (targetElm) {
+            if (typeof targetElm.attr('data-nodrag') != 'undefined') {
+              if (targetElm.attr('data-nodrag') === 'false') {
+                return false;
+              }
+              return true;
+            }
+            return false;
+          },
+
+          /**
+           * get the event object for touches
+           * @param  {[type]} e [description]
+           * @return {[type]}   [description]
+           */
+          eventObj: function (e) {
+            var obj = e;
+            if (e.targetTouches !== undefined) {
+              obj = e.targetTouches.item(0);
+            } else if (e.originalEvent !== undefined && e.originalEvent.targetTouches !== undefined) {
+              obj = e.originalEvent.targetTouches.item(0);
+            }
+            return obj;
+          },
+
+          dragInfo: function (node) {
+            return {
+              source: node,
+              sourceInfo: {
+                nodeScope: node,
+                index: node.index(),
+                nodesScope: node.$parentNodesScope
+              },
+              index: node.index(),
+              siblings: node.siblings().slice(0),
+              parent: node.$parentNodesScope,
+
+              // Move the node to a new position
+              moveTo: function (parent, siblings, index) {
+                this.parent = parent;
+                this.siblings = siblings.slice(0);
+
+                // If source node is in the target nodes
+                var i = this.siblings.indexOf(this.source);
+                if (i > -1) {
+                  this.siblings.splice(i, 1);
+                  if (this.source.index() < index) {
+                    index--;
+                  }
+                }
+
+                this.siblings.splice(index, 0, this.source);
+                this.index = index;
+              },
+
+              parentNode: function () {
+                return this.parent.$nodeScope;
+              },
+
+              prev: function () {
+                if (this.index > 0) {
+                  return this.siblings[this.index - 1];
+                }
+
+                return null;
+              },
+
+              next: function () {
+                if (this.index < this.siblings.length - 1) {
+                  return this.siblings[this.index + 1];
+                }
+
+                return null;
+              },
+
+              isDirty: function () {
+                return this.source.$parentNodesScope != this.parent ||
+                  this.source.index() != this.index;
+              },
+
+              eventArgs: function (elements, pos) {
+                return {
+                  source: this.sourceInfo,
+                  dest: {
+                    index: this.index,
+                    nodesScope: this.parent
+                  },
+                  elements: elements,
+                  pos: pos
+                };
+              },
+
+              apply: function () {
+                //no drop so no changes
+                if (this.parent.$treeScope.nodropEnabled !== true) {
+                  var nodeData = this.source.$modelValue;
+
+                  //cloneEnabled so do not remove from source
+                  if (this.source.$treeScope.cloneEnabled !== true) {
+                    this.source.remove();
+                  }
+
+                  //if the tree is set to cloneEnabled and source === dest do not insert node or it will cause a duplicate in the repeater
+                  if ((this.source.$treeScope.cloneEnabled === true) && (this.source.$treeScope === this.parent.$treeScope)) {
+                    return false;
+                  }
+
+                  this.parent.insertNode(this.index, nodeData);
+                }
+              }
+            };
+          },
+
+          /**
+           * @ngdoc method
+           * @name hippo.theme#height
+           * @methodOf ui.tree.service:$helper
+           *
+           * @description
+           * Get the height of an element.
+           *
+           * @param {Object} element Angular element.
+           * @returns {String} Height
+           */
+          height: function (element) {
+            return element.prop('scrollHeight');
+          },
+
+          /**
+           * @ngdoc method
+           * @name hippo.theme#width
+           * @methodOf ui.tree.service:$helper
+           *
+           * @description
+           * Get the width of an element.
+           *
+           * @param {Object} element Angular element.
+           * @returns {String} Width
+           */
+          width: function (element) {
+            return element.prop('scrollWidth');
+          },
+
+          /**
+           * @ngdoc method
+           * @name hippo.theme#offset
+           * @methodOf ui.nestedSortable.service:$helper
+           *
+           * @description
+           * Get the offset values of an element.
+           *
+           * @param {Object} element Angular element.
+           * @returns {Object} Object with properties width, height, top and left
+           */
+          offset: function (element) {
+            var boundingClientRect = element[0].getBoundingClientRect();
+
+            return {
+              width: element.prop('offsetWidth'),
+              height: element.prop('offsetHeight'),
+              top: boundingClientRect.top + ($window.pageYOffset || $document[0].body.scrollTop || $document[0].documentElement.scrollTop),
+              left: boundingClientRect.left + ($window.pageXOffset || $document[0].body.scrollLeft || $document[0].documentElement.scrollLeft)
+            };
+          },
+
+          /**
+           * @ngdoc method
+           * @name hippo.theme#positionStarted
+           * @methodOf ui.tree.service:$helper
+           *
+           * @description
+           * Get the start position of the target element according to the provided event properties.
+           *
+           * @param {Object} e Event
+           * @param {Object} target Target element
+           * @returns {Object} Object with properties offsetX, offsetY, startX, startY, nowX and dirX.
+           */
+          positionStarted: function (e, target) {
+            var pos = {};
+            pos.offsetX = e.pageX - this.offset(target).left;
+            pos.offsetY = e.pageY - this.offset(target).top;
+            pos.startX = pos.lastX = e.pageX;
+            pos.startY = pos.lastY = e.pageY;
+            pos.nowX = pos.nowY = pos.distX = pos.distY = pos.dirAx = 0;
+            pos.dirX = pos.dirY = pos.lastDirX = pos.lastDirY = pos.distAxX = pos.distAxY = 0;
+            return pos;
+          },
+
+          positionMoved: function (e, pos, firstMoving) {
+            // mouse position last events
+            pos.lastX = pos.nowX;
+            pos.lastY = pos.nowY;
+
+            // mouse position this events
+            pos.nowX = e.pageX;
+            pos.nowY = e.pageY;
+
+            // distance mouse moved between events
+            pos.distX = pos.nowX - pos.lastX;
+            pos.distY = pos.nowY - pos.lastY;
+
+            // direction mouse was moving
+            pos.lastDirX = pos.dirX;
+            pos.lastDirY = pos.dirY;
+
+            // direction mouse is now moving (on both axis)
+            pos.dirX = pos.distX === 0 ? 0 : pos.distX > 0 ? 1 : -1;
+            pos.dirY = pos.distY === 0 ? 0 : pos.distY > 0 ? 1 : -1;
+
+            // axis mouse is now moving on
+            var newAx = Math.abs(pos.distX) > Math.abs(pos.distY) ? 1 : 0;
+
+            // do nothing on first move
+            if (firstMoving) {
+              pos.dirAx = newAx;
+              pos.moving = true;
+              return;
+            }
+
+            // calc distance moved on this axis (and direction)
+            if (pos.dirAx !== newAx) {
+              pos.distAxX = 0;
+              pos.distAxY = 0;
+            } else {
+              pos.distAxX += Math.abs(pos.distX);
+              if (pos.dirX !== 0 && pos.dirX !== pos.lastDirX) {
+                pos.distAxX = 0;
+              }
+
+              pos.distAxY += Math.abs(pos.distY);
+              if (pos.dirY !== 0 && pos.dirY !== pos.lastDirY) {
+                pos.distAxY = 0;
+              }
+            }
+
+            pos.dirAx = newAx;
+          }
+        };
+      }
+
+    ]);
+
+})();
+
+/**
+ * @license Angular UI Tree v2.5.0
+ * (c) 2010-2015. https://github.com/angular-ui-tree/angular-ui-tree
+ * License: MIT
+ */
+!function(){"use strict";angular.module("ui.tree",[]).constant("treeConfig",{treeClass:"angular-ui-tree",emptyTreeClass:"angular-ui-tree-empty",hiddenClass:"angular-ui-tree-hidden",nodesClass:"angular-ui-tree-nodes",nodeClass:"angular-ui-tree-node",handleClass:"angular-ui-tree-handle",placeholderClass:"angular-ui-tree-placeholder",dragClass:"angular-ui-tree-drag",dragThreshold:3,levelThreshold:30})}(),function(){"use strict";angular.module("ui.tree").controller("TreeHandleController",["$scope","$element",function(e,n){this.scope=e,e.$element=n,e.$nodeScope=null,e.$type="uiTreeHandle"}])}(),function(){"use strict";angular.module("ui.tree").controller("TreeNodeController",["$scope","$element",function(e,n){function t(e){var n,l,r=0,i=e.childNodes();for(n=0;n<i.length;n++)l=i[n].$childNodesScope,l&&l.childNodesCount()>0&&(r=1,t(l));o+=r}this.scope=e,e.$element=n,e.$modelValue=null,e.$parentNodeScope=null,e.$childNodesScope=null,e.$parentNodesScope=null,e.$treeScope=null,e.$handleScope=null,e.$type="uiTreeNode",e.$$apply=!1,e.collapsed=!1,e.init=function(t){var o=t[0];e.$treeScope=t[1]?t[1].scope:null,e.$parentNodeScope=o.scope.$nodeScope,e.$modelValue=o.scope.$modelValue[e.$index],e.$parentNodesScope=o.scope,o.scope.initSubNode(e),n.on("$destroy",function(){o.scope.destroySubNode(e)})},e.index=function(){return e.$parentNodesScope.$modelValue.indexOf(e.$modelValue)},e.dragEnabled=function(){return!(e.$treeScope&&!e.$treeScope.dragEnabled)},e.isSibling=function(n){return e.$parentNodesScope==n.$parentNodesScope},e.isChild=function(n){var t=e.childNodes();return t&&t.indexOf(n)>-1},e.prev=function(){var n=e.index();return n>0?e.siblings()[n-1]:null},e.siblings=function(){return e.$parentNodesScope.childNodes()},e.childNodesCount=function(){return e.childNodes()?e.childNodes().length:0},e.hasChild=function(){return e.childNodesCount()>0},e.childNodes=function(){return e.$childNodesScope&&e.$childNodesScope.$modelValue?e.$childNodesScope.childNodes():null},e.accept=function(n,t){return e.$childNodesScope&&e.$childNodesScope.$modelValue&&e.$childNodesScope.accept(n,t)},e.removeNode=function(){var n=e.remove();return e.$callbacks.removed(n),n},e.remove=function(){return e.$parentNodesScope.removeNode(e)},e.toggle=function(){e.collapsed=!e.collapsed},e.collapse=function(){e.collapsed=!0},e.expand=function(){e.collapsed=!1},e.depth=function(){var n=e.$parentNodeScope;return n?n.depth()+1:1};var o=0;e.maxSubDepth=function(){return o=0,e.$childNodesScope&&t(e.$childNodesScope),o}}])}(),function(){"use strict";angular.module("ui.tree").controller("TreeNodesController",["$scope","$element",function(e,n){this.scope=e,e.$element=n,e.$modelValue=null,e.$nodeScope=null,e.$treeScope=null,e.$type="uiTreeNodes",e.$nodesMap={},e.nodropEnabled=!1,e.maxDepth=0,e.cloneEnabled=!1,e.initSubNode=function(n){return n.$modelValue?void(e.$nodesMap[n.$modelValue.$$hashKey]=n):null},e.destroySubNode=function(n){return n.$modelValue?void(e.$nodesMap[n.$modelValue.$$hashKey]=null):null},e.accept=function(n,t){return e.$treeScope.$callbacks.accept(n,e,t)},e.beforeDrag=function(n){return e.$treeScope.$callbacks.beforeDrag(n)},e.isParent=function(n){return n.$parentNodesScope==e},e.hasChild=function(){return e.$modelValue.length>0},e.safeApply=function(e){var n=this.$root.$$phase;"$apply"==n||"$digest"==n?e&&"function"==typeof e&&e():this.$apply(e)},e.removeNode=function(n){var t=e.$modelValue.indexOf(n.$modelValue);return t>-1?(e.safeApply(function(){e.$modelValue.splice(t,1)[0]}),n):null},e.insertNode=function(n,t){e.safeApply(function(){e.$modelValue.splice(n,0,t)})},e.childNodes=function(){var n,t=[];if(e.$modelValue)for(n=0;n<e.$modelValue.length;n++)t.push(e.$nodesMap[e.$modelValue[n].$$hashKey]);return t},e.depth=function(){return e.$nodeScope?e.$nodeScope.depth():0},e.outOfDepth=function(n){var t=e.maxDepth||e.$treeScope.maxDepth;return t>0?e.depth()+n.maxSubDepth()+1>t:!1}}])}(),function(){"use strict";angular.module("ui.tree").controller("TreeController",["$scope","$element",function(e,n){this.scope=e,e.$element=n,e.$nodesScope=null,e.$type="uiTree",e.$emptyElm=null,e.$callbacks=null,e.dragEnabled=!0,e.emptyPlaceholderEnabled=!0,e.maxDepth=0,e.dragDelay=0,e.cloneEnabled=!1,e.nodropEnabled=!1,e.isEmpty=function(){return e.$nodesScope&&e.$nodesScope.$modelValue&&0===e.$nodesScope.$modelValue.length},e.place=function(n){e.$nodesScope.$element.append(n),e.$emptyElm.remove()},this.resetEmptyElement=function(){e.$nodesScope.$modelValue&&0!==e.$nodesScope.$modelValue.length||!e.emptyPlaceholderEnabled?e.$emptyElm.remove():n.append(e.$emptyElm)},e.resetEmptyElement=this.resetEmptyElement;var t=function(e,n){var o,l,r=e.childNodes();for(o=0;o<r.length;o++)n?r[o].collapse():r[o].expand(),l=r[o].$childNodesScope,l&&t(l,n)};e.collapseAll=function(){t(e.$nodesScope,!0)},e.expandAll=function(){t(e.$nodesScope,!1)}}])}(),function(){"use strict";angular.module("ui.tree").directive("uiTree",["treeConfig","$window",function(e,n){return{restrict:"A",scope:!0,controller:"TreeController",link:function(t,o,l,r){var i={accept:null,beforeDrag:null},a={};angular.extend(a,e),a.treeClass&&o.addClass(a.treeClass),t.$emptyElm=angular.element(n.document.createElement("div")),a.emptyTreeClass&&t.$emptyElm.addClass(a.emptyTreeClass),t.$watch("$nodesScope.$modelValue.length",function(){t.$nodesScope.$modelValue&&r.resetEmptyElement()},!0),t.$watch(l.dragEnabled,function(e){"boolean"==typeof e&&(t.dragEnabled=e)}),t.$watch(l.emptyPlaceholderEnabled,function(e){"boolean"==typeof e&&(t.emptyPlaceholderEnabled=e,r.resetEmptyElement())}),t.$watch(l.nodropEnabled,function(e){"boolean"==typeof e&&(t.nodropEnabled=e)}),t.$watch(l.cloneEnabled,function(e){"boolean"==typeof e&&(t.cloneEnabled=e)}),t.$watch(l.maxDepth,function(e){"number"==typeof e&&(t.maxDepth=e)}),t.$watch(l.dragDelay,function(e){"number"==typeof e&&(t.dragDelay=e)}),i.accept=function(e,n,t){return n.nodropEnabled||n.outOfDepth(e)?!1:!0},i.beforeDrag=function(e){return!0},i.removed=function(e){},i.dropped=function(e){},i.dragStart=function(e){},i.dragMove=function(e){},i.dragStop=function(e){},i.beforeDrop=function(e){},t.$watch(l.uiTree,function(e,n){angular.forEach(e,function(e,n){i[n]&&"function"==typeof e&&(i[n]=e)}),t.$callbacks=i},!0)}}}])}(),function(){"use strict";angular.module("ui.tree").directive("uiTreeHandle",["treeConfig",function(e){return{require:"^uiTreeNode",restrict:"A",scope:!0,controller:"TreeHandleController",link:function(n,t,o,l){var r={};angular.extend(r,e),r.handleClass&&t.addClass(r.handleClass),n!=l.scope&&(n.$nodeScope=l.scope,l.scope.$handleScope=n)}}}])}(),function(){"use strict";angular.module("ui.tree").directive("uiTreeNode",["treeConfig","$uiTreeHelper","$window","$document","$timeout",function(e,n,t,o,l){return{require:["^uiTreeNodes","^uiTree"],restrict:"A",controller:"TreeNodeController",link:function(r,i,a,d){var c,s,u,p,f,$,m,h,g,b,y,S,v,N,x,E,C,T,w,D={},X="ontouchstart"in window,Y=null,A=document.body,V=document.documentElement;angular.extend(D,e),D.nodeClass&&i.addClass(D.nodeClass),r.init(d),r.collapsed=!!n.getNodeAttribute(r,"collapsed"),r.$watch(a.collapsed,function(e){"boolean"==typeof e&&(r.collapsed=e)}),r.$watch("collapsed",function(e){n.setNodeAttribute(r,"collapsed",e),a.$set("collapsed",e)}),b=function(e){if((X||2!=e.button&&3!=e.which)&&!(e.uiTreeDragging||e.originalEvent&&e.originalEvent.uiTreeDragging)){var l,a,d,b,y,S=angular.element(e.target),v=S.scope();if(v&&v.$type&&!("uiTreeNode"!=v.$type&&"uiTreeHandle"!=v.$type||"uiTreeNode"==v.$type&&v.$handleScope||(l=S.prop("tagName").toLowerCase(),"input"==l||"textarea"==l||"button"==l||"select"==l))){for(;S&&S[0]&&S[0]!=i;){if(n.nodrag(S))return;S=S.parent()}r.beforeDrag(r)&&(e.uiTreeDragging=!0,e.originalEvent&&(e.originalEvent.uiTreeDragging=!0),e.preventDefault(),d=n.eventObj(e),c=!0,s=n.dragInfo(r),r.$apply(function(){r.$treeScope.$callbacks.dragStart(s.eventArgs(m,u))}),a=r.$element.prop("tagName"),"tr"===a.toLowerCase()?(p=angular.element(t.document.createElement(a)),b=angular.element(t.document.createElement("td")).addClass(D.placeholderClass),p.append(b)):p=angular.element(t.document.createElement(a)).addClass(D.placeholderClass),f=angular.element(t.document.createElement(a)),D.hiddenClass&&f.addClass(D.hiddenClass),u=n.positionStarted(d,r.$element),p.css("height",n.height(r.$element)+"px"),$=angular.element(t.document.createElement(r.$parentNodesScope.$element.prop("tagName"))).addClass(r.$parentNodesScope.$element.attr("class")).addClass(D.dragClass),$.css("width",n.width(r.$element)+"px"),$.css("z-index",9999),y=(r.$element[0].querySelector(".angular-ui-tree-handle")||r.$element[0]).currentStyle,y&&(document.body.setAttribute("ui-tree-cursor",o.find("body").css("cursor")||""),o.find("body").css({cursor:y.cursor+"!important"})),r.$element.after(p),r.$element.after(f),$.append(r.$element),o.find("body").append($),$.css({left:d.pageX-u.offsetX+"px",top:d.pageY-u.offsetY+"px"}),m={placeholder:p,dragging:$},angular.element(o).bind("touchend",x),angular.element(o).bind("touchcancel",x),angular.element(o).bind("touchmove",N),angular.element(o).bind("mouseup",x),angular.element(o).bind("mousemove",N),angular.element(o).bind("mouseleave",E),h=Math.max(A.scrollHeight,A.offsetHeight,V.clientHeight,V.scrollHeight,V.offsetHeight),g=Math.max(A.scrollWidth,A.offsetWidth,V.clientWidth,V.scrollWidth,V.offsetWidth))}}},y=function(e){var o,l,i,a,d,f,b,y,S,v,N,x,E,C,T,w,X=n.eventObj(e);if($){if(e.preventDefault(),t.getSelection?t.getSelection().removeAllRanges():t.document.selection&&t.document.selection.empty(),i=X.pageX-u.offsetX,a=X.pageY-u.offsetY,0>i&&(i=0),0>a&&(a=0),a+10>h&&(a=h-10),i+10>g&&(i=g-10),$.css({left:i+"px",top:a+"px"}),d=window.pageYOffset||t.document.documentElement.scrollTop,f=d+(window.innerHeight||t.document.clientHeight||t.document.clientHeight),f<X.pageY&&h>=f&&window.scrollBy(0,10),d>X.pageY&&window.scrollBy(0,-10),n.positionMoved(e,u,c),c)return void(c=!1);if(u.dirAx&&u.distAxX>=D.levelThreshold&&(u.distAxX=0,u.distX>0&&(o=s.prev(),o&&!o.collapsed&&o.accept(r,o.childNodesCount())&&(o.$childNodesScope.$element.append(p),s.moveTo(o.$childNodesScope,o.childNodes(),o.childNodesCount()))),u.distX<0&&(l=s.next(),l||(b=s.parentNode(),b&&b.$parentNodesScope.accept(r,b.index()+1)&&(b.$element.after(p),s.moveTo(b.$parentNodesScope,b.siblings(),b.index()+1))))),y=n.offset($).left-n.offset(p).left>=D.threshold,S=X.pageX-t.document.body.scrollLeft,v=X.pageY-(window.pageYOffset||t.document.documentElement.scrollTop),angular.isFunction($.hide)?$.hide():(N=$[0].style.display,$[0].style.display="none"),t.document.elementFromPoint(S,v),E=angular.element(t.document.elementFromPoint(S,v)),angular.isFunction($.show)?$.show():$[0].style.display=N,!u.dirAx){if(x=E.scope(),C=!1,!x)return;if("uiTree"==x.$type&&x.dragEnabled&&(C=x.isEmpty()),"uiTreeHandle"==x.$type&&(x=x.$nodeScope),"uiTreeNode"!=x.$type&&!C)return;Y&&p.parent()[0]!=Y.$element[0]&&(Y.resetEmptyElement(),Y=null),C?(Y=x,x.$nodesScope.accept(r,0)&&(x.place(p),s.moveTo(x.$nodesScope,x.$nodesScope.childNodes(),0))):x.dragEnabled()&&(E=x.$element,T=n.offset(E),w=x.horizontal?X.pageX<T.left+n.width(E)/2:X.pageY<T.top+n.height(E)/2,x.$parentNodesScope.accept(r,x.index())?w?(E[0].parentNode.insertBefore(p[0],E[0]),s.moveTo(x.$parentNodesScope,x.siblings(),x.index())):(E.after(p),s.moveTo(x.$parentNodesScope,x.siblings(),x.index()+1)):!w&&x.accept(r,x.childNodesCount())&&(x.$childNodesScope.$element.append(p),s.moveTo(x.$childNodesScope,x.childNodes(),x.childNodesCount())))}r.$apply(function(){r.$treeScope.$callbacks.dragMove(s.eventArgs(m,u))})}},S=function(e){e.preventDefault(),$&&(r.$treeScope.$apply(function(){r.$treeScope.$callbacks.beforeDrop(s.eventArgs(m,u))}),f.replaceWith(r.$element),p.remove(),$.remove(),$=null,r.$$apply?r.$treeScope.$apply(function(){s.apply(),r.$treeScope.$callbacks.dropped(s.eventArgs(m,u))}):T(),r.$treeScope.$apply(function(){r.$treeScope.$callbacks.dragStop(s.eventArgs(m,u))}),r.$$apply=!1,s=null);var n=document.body.getAttribute("ui-tree-cursor");null!==n&&(o.find("body").css({cursor:n}),document.body.removeAttribute("ui-tree-cursor")),angular.element(o).unbind("touchend",x),angular.element(o).unbind("touchcancel",x),angular.element(o).unbind("touchmove",N),angular.element(o).unbind("mouseup",x),angular.element(o).unbind("mousemove",N),angular.element(t.document.body).unbind("mouseleave",E)},v=function(e){r.dragEnabled()&&b(e)},N=function(e){y(e)},x=function(e){r.$$apply=!0,S(e)},E=function(e){S(e)},C=function(){var e;return{exec:function(n,t){t||(t=0),this.cancel(),e=l(n,t)},cancel:function(){l.cancel(e)}}}(),T=function(){i.bind("touchstart mousedown",function(e){C.exec(function(){v(e)},r.dragDelay||0)}),i.bind("touchend touchcancel mouseup",function(){C.cancel()})},T(),w=function(e){27==e.keyCode&&(r.$$apply=!1,S(e))},angular.element(t.document.body).bind("keydown",w),r.$on("$destroy",function(){angular.element(t.document.body).unbind("keydown",w)})}}}])}(),function(){"use strict";angular.module("ui.tree").directive("uiTreeNodes",["treeConfig","$window",function(e){return{require:["ngModel","?^uiTreeNode","^uiTree"],restrict:"A",scope:!0,controller:"TreeNodesController",link:function(n,t,o,l){var r={},i=l[0],a=l[1],d=l[2];angular.extend(r,e),r.nodesClass&&t.addClass(r.nodesClass),a?(a.scope.$childNodesScope=n,n.$nodeScope=a.scope):d.scope.$nodesScope=n,n.$treeScope=d.scope,i&&(i.$render=function(){i.$modelValue&&angular.isArray(i.$modelValue)||(n.$modelValue=[]),n.$modelValue=i.$modelValue}),n.$watch(o.maxDepth,function(e){"number"==typeof e&&(n.maxDepth=e)}),n.$watch(function(){return o.nodropEnabled},function(e){"undefined"!=typeof e&&(n.nodropEnabled=!0)},!0),o.$observe("horizontal",function(e){n.horizontal="undefined"!=typeof e})}}}])}(),function(){"use strict";angular.module("ui.tree").factory("$uiTreeHelper",["$document","$window",function(e,n){return{nodesData:{},setNodeAttribute:function(e,n,t){if(!e.$modelValue)return null;var o=this.nodesData[e.$modelValue.$$hashKey];o||(o={},this.nodesData[e.$modelValue.$$hashKey]=o),o[n]=t},getNodeAttribute:function(e,n){if(!e.$modelValue)return null;var t=this.nodesData[e.$modelValue.$$hashKey];return t?t[n]:null},nodrag:function(e){return"undefined"!=typeof e.attr("data-nodrag")?"false"===e.attr("data-nodrag")?!1:!0:!1},eventObj:function(e){var n=e;return void 0!==e.targetTouches?n=e.targetTouches.item(0):void 0!==e.originalEvent&&void 0!==e.originalEvent.targetTouches&&(n=e.originalEvent.targetTouches.item(0)),n},dragInfo:function(e){return{source:e,sourceInfo:{nodeScope:e,index:e.index(),nodesScope:e.$parentNodesScope},index:e.index(),siblings:e.siblings().slice(0),parent:e.$parentNodesScope,moveTo:function(e,n,t){this.parent=e,this.siblings=n.slice(0);var o=this.siblings.indexOf(this.source);o>-1&&(this.siblings.splice(o,1),this.source.index()<t&&t--),this.siblings.splice(t,0,this.source),this.index=t},parentNode:function(){return this.parent.$nodeScope},prev:function(){return this.index>0?this.siblings[this.index-1]:null},next:function(){return this.index<this.siblings.length-1?this.siblings[this.index+1]:null},isDirty:function(){return this.source.$parentNodesScope!=this.parent||this.source.index()!=this.index},eventArgs:function(e,n){return{source:this.sourceInfo,dest:{index:this.index,nodesScope:this.parent},elements:e,pos:n}},apply:function(){if(this.parent.$treeScope.nodropEnabled!==!0){var e=this.source.$modelValue;if(this.source.$treeScope.cloneEnabled!==!0&&this.source.remove(),this.source.$treeScope.cloneEnabled===!0&&this.source.$treeScope===this.parent.$treeScope)return!1;this.parent.insertNode(this.index,e)}}}},height:function(e){return e.prop("scrollHeight")},width:function(e){return e.prop("scrollWidth")},offset:function(t){var o=t[0].getBoundingClientRect();return{width:t.prop("offsetWidth"),height:t.prop("offsetHeight"),top:o.top+(n.pageYOffset||e[0].body.scrollTop||e[0].documentElement.scrollTop),left:o.left+(n.pageXOffset||e[0].body.scrollLeft||e[0].documentElement.scrollLeft)}},positionStarted:function(e,n){var t={};return t.offsetX=e.pageX-this.offset(n).left,t.offsetY=e.pageY-this.offset(n).top,t.startX=t.lastX=e.pageX,t.startY=t.lastY=e.pageY,t.nowX=t.nowY=t.distX=t.distY=t.dirAx=0,t.dirX=t.dirY=t.lastDirX=t.lastDirY=t.distAxX=t.distAxY=0,t},positionMoved:function(e,n,t){n.lastX=n.nowX,n.lastY=n.nowY,n.nowX=e.pageX,n.nowY=e.pageY,n.distX=n.nowX-n.lastX,n.distY=n.nowY-n.lastY,n.lastDirX=n.dirX,n.lastDirY=n.dirY,n.dirX=0===n.distX?0:n.distX>0?1:-1,n.dirY=0===n.distY?0:n.distY>0?1:-1;var o=Math.abs(n.distX)>Math.abs(n.distY)?1:0;return t?(n.dirAx=o,void(n.moving=!0)):(n.dirAx!==o?(n.distAxX=0,n.distAxY=0):(n.distAxX+=Math.abs(n.distX),0!==n.dirX&&n.dirX!==n.lastDirX&&(n.distAxX=0),n.distAxY+=Math.abs(n.distY),0!==n.dirY&&n.dirY!==n.lastDirY&&(n.distAxY=0)),void(n.dirAx=o))}}}])}();
+/*!
+ * angular-translate - v2.7.2 - 2015-06-01
+ * http://github.com/angular-translate/angular-translate
+ * Copyright (c) 2015 ; Licensed MIT
+ */
+(function (root, factory) {
+  if (typeof define === 'function' && define.amd) {
+    // AMD. Register as an anonymous module unless amdModuleId is set
+    define([], function () {
+      return (factory());
+    });
+  } else if (typeof exports === 'object') {
+    // Node. Does not work with strict CommonJS, but
+    // only CommonJS-like environments that support module.exports,
+    // like Node.
+    module.exports = factory();
+  } else {
+    factory();
+  }
+}(this, function () {
+
+/**
+ * @ngdoc overview
+ * @name pascalprecht.translate
+ *
+ * @description
+ * The main module which holds everything together.
+ */
+angular.module('pascalprecht.translate', ['ng'])
+  .run(runTranslate);
+
+function runTranslate($translate) {
+
+  'use strict';
+
+  var key = $translate.storageKey(),
+    storage = $translate.storage();
+
+  var fallbackFromIncorrectStorageValue = function () {
+    var preferred = $translate.preferredLanguage();
+    if (angular.isString(preferred)) {
+      $translate.use(preferred);
+      // $translate.use() will also remember the language.
+      // So, we don't need to call storage.put() here.
+    } else {
+      storage.put(key, $translate.use());
+    }
+  };
+
+  fallbackFromIncorrectStorageValue.displayName = 'fallbackFromIncorrectStorageValue';
+
+  if (storage) {
+    if (!storage.get(key)) {
+      fallbackFromIncorrectStorageValue();
+    } else {
+      $translate.use(storage.get(key))['catch'](fallbackFromIncorrectStorageValue);
+    }
+  } else if (angular.isString($translate.preferredLanguage())) {
+    $translate.use($translate.preferredLanguage());
+  }
+}
+runTranslate.$inject = ['$translate'];
+
+runTranslate.displayName = 'runTranslate';
+
+/**
+ * @ngdoc object
+ * @name pascalprecht.translate.$translateSanitizationProvider
+ *
+ * @description
+ *
+ * Configurations for $translateSanitization
+ */
+angular.module('pascalprecht.translate').provider('$translateSanitization', $translateSanitizationProvider);
+
+function $translateSanitizationProvider () {
+
+  'use strict';
+
+  var $sanitize,
+      currentStrategy = null, // TODO change to either 'sanitize', 'escape' or ['sanitize', 'escapeParameters'] in 3.0.
+      hasConfiguredStrategy = false,
+      hasShownNoStrategyConfiguredWarning = false,
+      strategies;
+
+  /**
+   * Definition of a sanitization strategy function
+   * @callback StrategyFunction
+   * @param {string|object} value - value to be sanitized (either a string or an interpolated value map)
+   * @param {string} mode - either 'text' for a string (translation) or 'params' for the interpolated params
+   * @return {string|object}
+   */
+
+  /**
+   * @ngdoc property
+   * @name strategies
+   * @propertyOf pascalprecht.translate.$translateSanitizationProvider
+   *
+   * @description
+   * Following strategies are built-in:
+   * <dl>
+   *   <dt>sanitize</dt>
+   *   <dd>Sanitizes HTML in the translation text using $sanitize</dd>
+   *   <dt>escape</dt>
+   *   <dd>Escapes HTML in the translation</dd>
+   *   <dt>sanitizeParameters</dt>
+   *   <dd>Sanitizes HTML in the values of the interpolation parameters using $sanitize</dd>
+   *   <dt>escapeParameters</dt>
+   *   <dd>Escapes HTML in the values of the interpolation parameters</dd>
+   *   <dt>escaped</dt>
+   *   <dd>Support legacy strategy name 'escaped' for backwards compatibility (will be removed in 3.0)</dd>
+   * </dl>
+   *
+   */
+
+  strategies = {
+    sanitize: function (value, mode) {
+      if (mode === 'text') {
+        value = htmlSanitizeValue(value);
+      }
+      return value;
+    },
+    escape: function (value, mode) {
+      if (mode === 'text') {
+        value = htmlEscapeValue(value);
+      }
+      return value;
+    },
+    sanitizeParameters: function (value, mode) {
+      if (mode === 'params') {
+        value = mapInterpolationParameters(value, htmlSanitizeValue);
+      }
+      return value;
+    },
+    escapeParameters: function (value, mode) {
+      if (mode === 'params') {
+        value = mapInterpolationParameters(value, htmlEscapeValue);
+      }
+      return value;
+    }
+  };
+  // Support legacy strategy name 'escaped' for backwards compatibility.
+  // TODO should be removed in 3.0
+  strategies.escaped = strategies.escapeParameters;
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateSanitizationProvider#addStrategy
+   * @methodOf pascalprecht.translate.$translateSanitizationProvider
+   *
+   * @description
+   * Adds a sanitization strategy to the list of known strategies.
+   *
+   * @param {string} strategyName - unique key for a strategy
+   * @param {StrategyFunction} strategyFunction - strategy function
+   * @returns {object} this
+   */
+  this.addStrategy = function (strategyName, strategyFunction) {
+    strategies[strategyName] = strategyFunction;
+    return this;
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateSanitizationProvider#removeStrategy
+   * @methodOf pascalprecht.translate.$translateSanitizationProvider
+   *
+   * @description
+   * Removes a sanitization strategy from the list of known strategies.
+   *
+   * @param {string} strategyName - unique key for a strategy
+   * @returns {object} this
+   */
+  this.removeStrategy = function (strategyName) {
+    delete strategies[strategyName];
+    return this;
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateSanitizationProvider#useStrategy
+   * @methodOf pascalprecht.translate.$translateSanitizationProvider
+   *
+   * @description
+   * Selects a sanitization strategy. When an array is provided the strategies will be executed in order.
+   *
+   * @param {string|StrategyFunction|array} strategy The sanitization strategy / strategies which should be used. Either a name of an existing strategy, a custom strategy function, or an array consisting of multiple names and / or custom functions.
+   * @returns {object} this
+   */
+  this.useStrategy = function (strategy) {
+    hasConfiguredStrategy = true;
+    currentStrategy = strategy;
+    return this;
+  };
+
+  /**
+   * @ngdoc object
+   * @name pascalprecht.translate.$translateSanitization
+   * @requires $injector
+   * @requires $log
+   *
+   * @description
+   * Sanitizes interpolation parameters and translated texts.
+   *
+   */
+  this.$get = ['$injector', '$log', function ($injector, $log) {
+
+    var applyStrategies = function (value, mode, selectedStrategies) {
+      angular.forEach(selectedStrategies, function (selectedStrategy) {
+        if (angular.isFunction(selectedStrategy)) {
+          value = selectedStrategy(value, mode);
+        } else if (angular.isFunction(strategies[selectedStrategy])) {
+          value = strategies[selectedStrategy](value, mode);
+        } else {
+          throw new Error('pascalprecht.translate.$translateSanitization: Unknown sanitization strategy: \'' + selectedStrategy + '\'');
+        }
+      });
+      return value;
+    };
+
+    // TODO: should be removed in 3.0
+    var showNoStrategyConfiguredWarning = function () {
+      if (!hasConfiguredStrategy && !hasShownNoStrategyConfiguredWarning) {
+        $log.warn('pascalprecht.translate.$translateSanitization: No sanitization strategy has been configured. This can have serious security implications. See http://angular-translate.github.io/docs/#/guide/19_security for details.');
+        hasShownNoStrategyConfiguredWarning = true;
+      }
+    };
+
+    if ($injector.has('$sanitize')) {
+      $sanitize = $injector.get('$sanitize');
+    }
+
+    return {
+      /**
+       * @ngdoc function
+       * @name pascalprecht.translate.$translateSanitization#useStrategy
+       * @methodOf pascalprecht.translate.$translateSanitization
+       *
+       * @description
+       * Selects a sanitization strategy. When an array is provided the strategies will be executed in order.
+       *
+       * @param {string|StrategyFunction|array} strategy The sanitization strategy / strategies which should be used. Either a name of an existing strategy, a custom strategy function, or an array consisting of multiple names and / or custom functions.
+       */
+      useStrategy: (function (self) {
+        return function (strategy) {
+          self.useStrategy(strategy);
+        };
+      })(this),
+
+      /**
+       * @ngdoc function
+       * @name pascalprecht.translate.$translateSanitization#sanitize
+       * @methodOf pascalprecht.translate.$translateSanitization
+       *
+       * @description
+       * Sanitizes a value.
+       *
+       * @param {string|object} value The value which should be sanitized.
+       * @param {string} mode The current sanitization mode, either 'params' or 'text'.
+       * @param {string|StrategyFunction|array} [strategy] Optional custom strategy which should be used instead of the currently selected strategy.
+       * @returns {string|object} sanitized value
+       */
+      sanitize: function (value, mode, strategy) {
+        if (!currentStrategy) {
+          showNoStrategyConfiguredWarning();
+        }
+
+        if (arguments.length < 3) {
+          strategy = currentStrategy;
+        }
+
+        if (!strategy) {
+          return value;
+        }
+
+        var selectedStrategies = angular.isArray(strategy) ? strategy : [strategy];
+        return applyStrategies(value, mode, selectedStrategies);
+      }
+    };
+  }];
+
+  var htmlEscapeValue = function (value) {
+    var element = angular.element('<div></div>');
+    element.text(value); // not chainable, see #1044
+    return element.html();
+  };
+
+  var htmlSanitizeValue = function (value) {
+    if (!$sanitize) {
+      throw new Error('pascalprecht.translate.$translateSanitization: Error cannot find $sanitize service. Either include the ngSanitize module (https://docs.angularjs.org/api/ngSanitize) or use a sanitization strategy which does not depend on $sanitize, such as \'escape\'.');
+    }
+    return $sanitize(value);
+  };
+
+  var mapInterpolationParameters = function (value, iteratee) {
+    if (angular.isObject(value)) {
+      var result = angular.isArray(value) ? [] : {};
+
+      angular.forEach(value, function (propertyValue, propertyKey) {
+        result[propertyKey] = mapInterpolationParameters(propertyValue, iteratee);
+      });
+
+      return result;
+    } else if (angular.isNumber(value)) {
+      return value;
+    } else {
+      return iteratee(value);
+    }
+  };
+}
+
+/**
+ * @ngdoc object
+ * @name pascalprecht.translate.$translateProvider
+ * @description
+ *
+ * $translateProvider allows developers to register translation-tables, asynchronous loaders
+ * and similar to configure translation behavior directly inside of a module.
+ *
+ */
+angular.module('pascalprecht.translate')
+.constant('pascalprechtTranslateOverrider', {})
+.provider('$translate', $translate);
+
+function $translate($STORAGE_KEY, $windowProvider, $translateSanitizationProvider, pascalprechtTranslateOverrider) {
+
+  'use strict';
+
+  var $translationTable = {},
+      $preferredLanguage,
+      $availableLanguageKeys = [],
+      $languageKeyAliases,
+      $fallbackLanguage,
+      $fallbackWasString,
+      $uses,
+      $nextLang,
+      $storageFactory,
+      $storageKey = $STORAGE_KEY,
+      $storagePrefix,
+      $missingTranslationHandlerFactory,
+      $interpolationFactory,
+      $interpolatorFactories = [],
+      $loaderFactory,
+      $cloakClassName = 'translate-cloak',
+      $loaderOptions,
+      $notFoundIndicatorLeft,
+      $notFoundIndicatorRight,
+      $postCompilingEnabled = false,
+      $forceAsyncReloadEnabled = false,
+      NESTED_OBJECT_DELIMITER = '.',
+      loaderCache,
+      directivePriority = 0,
+      statefulFilter = true,
+      uniformLanguageTagResolver = 'default',
+      languageTagResolver = {
+        'default': function (tag) {
+          return (tag || '').split('-').join('_');
+        },
+        java: function (tag) {
+          var temp = (tag || '').split('-').join('_');
+          var parts = temp.split('_');
+          return parts.length > 1 ? (parts[0].toLowerCase() + '_' + parts[1].toUpperCase()) : temp;
+        },
+        bcp47: function (tag) {
+          var temp = (tag || '').split('_').join('-');
+          var parts = temp.split('-');
+          return parts.length > 1 ? (parts[0].toLowerCase() + '-' + parts[1].toUpperCase()) : temp;
+        }
+      };
+
+  var version = '2.7.2';
+
+  // tries to determine the browsers language
+  var getFirstBrowserLanguage = function () {
+
+    // internal purpose only
+    if (angular.isFunction(pascalprechtTranslateOverrider.getLocale)) {
+      return pascalprechtTranslateOverrider.getLocale();
+    }
+
+    var nav = $windowProvider.$get().navigator,
+        browserLanguagePropertyKeys = ['language', 'browserLanguage', 'systemLanguage', 'userLanguage'],
+        i,
+        language;
+
+    // support for HTML 5.1 "navigator.languages"
+    if (angular.isArray(nav.languages)) {
+      for (i = 0; i < nav.languages.length; i++) {
+        language = nav.languages[i];
+        if (language && language.length) {
+          return language;
+        }
+      }
+    }
+
+    // support for other well known properties in browsers
+    for (i = 0; i < browserLanguagePropertyKeys.length; i++) {
+      language = nav[browserLanguagePropertyKeys[i]];
+      if (language && language.length) {
+        return language;
+      }
+    }
+
+    return null;
+  };
+  getFirstBrowserLanguage.displayName = 'angular-translate/service: getFirstBrowserLanguage';
+
+  // tries to determine the browsers locale
+  var getLocale = function () {
+    var locale = getFirstBrowserLanguage() || '';
+    if (languageTagResolver[uniformLanguageTagResolver]) {
+      locale = languageTagResolver[uniformLanguageTagResolver](locale);
+    }
+    return locale;
+  };
+  getLocale.displayName = 'angular-translate/service: getLocale';
+
+  /**
+   * @name indexOf
+   * @private
+   *
+   * @description
+   * indexOf polyfill. Kinda sorta.
+   *
+   * @param {array} array Array to search in.
+   * @param {string} searchElement Element to search for.
+   *
+   * @returns {int} Index of search element.
+   */
+  var indexOf = function(array, searchElement) {
+    for (var i = 0, len = array.length; i < len; i++) {
+      if (array[i] === searchElement) {
+        return i;
+      }
+    }
+    return -1;
+  };
+
+  /**
+   * @name trim
+   * @private
+   *
+   * @description
+   * trim polyfill
+   *
+   * @returns {string} The string stripped of whitespace from both ends
+   */
+  var trim = function() {
+    return this.toString().replace(/^\s+|\s+$/g, '');
+  };
+
+  var negotiateLocale = function (preferred) {
+
+    var avail = [],
+        locale = angular.lowercase(preferred),
+        i = 0,
+        n = $availableLanguageKeys.length;
+
+    for (; i < n; i++) {
+      avail.push(angular.lowercase($availableLanguageKeys[i]));
+    }
+
+    if (indexOf(avail, locale) > -1) {
+      return preferred;
+    }
+
+    if ($languageKeyAliases) {
+      var alias;
+      for (var langKeyAlias in $languageKeyAliases) {
+        var hasWildcardKey = false;
+        var hasExactKey = Object.prototype.hasOwnProperty.call($languageKeyAliases, langKeyAlias) &&
+          angular.lowercase(langKeyAlias) === angular.lowercase(preferred);
+
+        if (langKeyAlias.slice(-1) === '*') {
+          hasWildcardKey = langKeyAlias.slice(0, -1) === preferred.slice(0, langKeyAlias.length-1);
+        }
+        if (hasExactKey || hasWildcardKey) {
+          alias = $languageKeyAliases[langKeyAlias];
+          if (indexOf(avail, angular.lowercase(alias)) > -1) {
+            return alias;
+          }
+        }
+      }
+    }
+
+    if (preferred) {
+      var parts = preferred.split('_');
+
+      if (parts.length > 1 && indexOf(avail, angular.lowercase(parts[0])) > -1) {
+        return parts[0];
+      }
+    }
+
+    // If everything fails, just return the preferred, unchanged.
+    return preferred;
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#translations
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Registers a new translation table for specific language key.
+   *
+   * To register a translation table for specific language, pass a defined language
+   * key as first parameter.
+   *
+   * <pre>
+   *  // register translation table for language: 'de_DE'
+   *  $translateProvider.translations('de_DE', {
+   *    'GREETING': 'Hallo Welt!'
+   *  });
+   *
+   *  // register another one
+   *  $translateProvider.translations('en_US', {
+   *    'GREETING': 'Hello world!'
+   *  });
+   * </pre>
+   *
+   * When registering multiple translation tables for for the same language key,
+   * the actual translation table gets extended. This allows you to define module
+   * specific translation which only get added, once a specific module is loaded in
+   * your app.
+   *
+   * Invoking this method with no arguments returns the translation table which was
+   * registered with no language key. Invoking it with a language key returns the
+   * related translation table.
+   *
+   * @param {string} key A language key.
+   * @param {object} translationTable A plain old JavaScript object that represents a translation table.
+   *
+   */
+  var translations = function (langKey, translationTable) {
+
+    if (!langKey && !translationTable) {
+      return $translationTable;
+    }
+
+    if (langKey && !translationTable) {
+      if (angular.isString(langKey)) {
+        return $translationTable[langKey];
+      }
+    } else {
+      if (!angular.isObject($translationTable[langKey])) {
+        $translationTable[langKey] = {};
+      }
+      angular.extend($translationTable[langKey], flatObject(translationTable));
+    }
+    return this;
+  };
+
+  this.translations = translations;
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#cloakClassName
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   *
+   * Let's you change the class name for `translate-cloak` directive.
+   * Default class name is `translate-cloak`.
+   *
+   * @param {string} name translate-cloak class name
+   */
+  this.cloakClassName = function (name) {
+    if (!name) {
+      return $cloakClassName;
+    }
+    $cloakClassName = name;
+    return this;
+  };
+
+  /**
+   * @name flatObject
+   * @private
+   *
+   * @description
+   * Flats an object. This function is used to flatten given translation data with
+   * namespaces, so they are later accessible via dot notation.
+   */
+  var flatObject = function (data, path, result, prevKey) {
+    var key, keyWithPath, keyWithShortPath, val;
+
+    if (!path) {
+      path = [];
+    }
+    if (!result) {
+      result = {};
+    }
+    for (key in data) {
+      if (!Object.prototype.hasOwnProperty.call(data, key)) {
+        continue;
+      }
+      val = data[key];
+      if (angular.isObject(val)) {
+        flatObject(val, path.concat(key), result, key);
+      } else {
+        keyWithPath = path.length ? ('' + path.join(NESTED_OBJECT_DELIMITER) + NESTED_OBJECT_DELIMITER + key) : key;
+        if(path.length && key === prevKey){
+          // Create shortcut path (foo.bar == foo.bar.bar)
+          keyWithShortPath = '' + path.join(NESTED_OBJECT_DELIMITER);
+          // Link it to original path
+          result[keyWithShortPath] = '@:' + keyWithPath;
+        }
+        result[keyWithPath] = val;
+      }
+    }
+    return result;
+  };
+  flatObject.displayName = 'flatObject';
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#addInterpolation
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Adds interpolation services to angular-translate, so it can manage them.
+   *
+   * @param {object} factory Interpolation service factory
+   */
+  this.addInterpolation = function (factory) {
+    $interpolatorFactories.push(factory);
+    return this;
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#useMessageFormatInterpolation
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Tells angular-translate to use interpolation functionality of messageformat.js.
+   * This is useful when having high level pluralization and gender selection.
+   */
+  this.useMessageFormatInterpolation = function () {
+    return this.useInterpolation('$translateMessageFormatInterpolation');
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#useInterpolation
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Tells angular-translate which interpolation style to use as default, application-wide.
+   * Simply pass a factory/service name. The interpolation service has to implement
+   * the correct interface.
+   *
+   * @param {string} factory Interpolation service name.
+   */
+  this.useInterpolation = function (factory) {
+    $interpolationFactory = factory;
+    return this;
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#useSanitizeStrategy
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Simply sets a sanitation strategy type.
+   *
+   * @param {string} value Strategy type.
+   */
+  this.useSanitizeValueStrategy = function (value) {
+    $translateSanitizationProvider.useStrategy(value);
+    return this;
+  };
+
+ /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#preferredLanguage
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Tells the module which of the registered translation tables to use for translation
+   * at initial startup by passing a language key. Similar to `$translateProvider#use`
+   * only that it says which language to **prefer**.
+   *
+   * @param {string} langKey A language key.
+   *
+   */
+  this.preferredLanguage = function(langKey) {
+    setupPreferredLanguage(langKey);
+    return this;
+
+  };
+  var setupPreferredLanguage = function (langKey) {
+    if (langKey) {
+      $preferredLanguage = langKey;
+    }
+    return $preferredLanguage;
+  };
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#translationNotFoundIndicator
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Sets an indicator which is used when a translation isn't found. E.g. when
+   * setting the indicator as 'X' and one tries to translate a translation id
+   * called `NOT_FOUND`, this will result in `X NOT_FOUND X`.
+   *
+   * Internally this methods sets a left indicator and a right indicator using
+   * `$translateProvider.translationNotFoundIndicatorLeft()` and
+   * `$translateProvider.translationNotFoundIndicatorRight()`.
+   *
+   * **Note**: These methods automatically add a whitespace between the indicators
+   * and the translation id.
+   *
+   * @param {string} indicator An indicator, could be any string.
+   */
+  this.translationNotFoundIndicator = function (indicator) {
+    this.translationNotFoundIndicatorLeft(indicator);
+    this.translationNotFoundIndicatorRight(indicator);
+    return this;
+  };
+
+  /**
+   * ngdoc function
+   * @name pascalprecht.translate.$translateProvider#translationNotFoundIndicatorLeft
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Sets an indicator which is used when a translation isn't found left to the
+   * translation id.
+   *
+   * @param {string} indicator An indicator.
+   */
+  this.translationNotFoundIndicatorLeft = function (indicator) {
+    if (!indicator) {
+      return $notFoundIndicatorLeft;
+    }
+    $notFoundIndicatorLeft = indicator;
+    return this;
+  };
+
+  /**
+   * ngdoc function
+   * @name pascalprecht.translate.$translateProvider#translationNotFoundIndicatorLeft
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Sets an indicator which is used when a translation isn't found right to the
+   * translation id.
+   *
+   * @param {string} indicator An indicator.
+   */
+  this.translationNotFoundIndicatorRight = function (indicator) {
+    if (!indicator) {
+      return $notFoundIndicatorRight;
+    }
+    $notFoundIndicatorRight = indicator;
+    return this;
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#fallbackLanguage
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Tells the module which of the registered translation tables to use when missing translations
+   * at initial startup by passing a language key. Similar to `$translateProvider#use`
+   * only that it says which language to **fallback**.
+   *
+   * @param {string||array} langKey A language key.
+   *
+   */
+  this.fallbackLanguage = function (langKey) {
+    fallbackStack(langKey);
+    return this;
+  };
+
+  var fallbackStack = function (langKey) {
+    if (langKey) {
+      if (angular.isString(langKey)) {
+        $fallbackWasString = true;
+        $fallbackLanguage = [ langKey ];
+      } else if (angular.isArray(langKey)) {
+        $fallbackWasString = false;
+        $fallbackLanguage = langKey;
+      }
+      if (angular.isString($preferredLanguage)  && indexOf($fallbackLanguage, $preferredLanguage) < 0) {
+        $fallbackLanguage.push($preferredLanguage);
+      }
+
+      return this;
+    } else {
+      if ($fallbackWasString) {
+        return $fallbackLanguage[0];
+      } else {
+        return $fallbackLanguage;
+      }
+    }
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#use
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Set which translation table to use for translation by given language key. When
+   * trying to 'use' a language which isn't provided, it'll throw an error.
+   *
+   * You actually don't have to use this method since `$translateProvider#preferredLanguage`
+   * does the job too.
+   *
+   * @param {string} langKey A language key.
+   */
+  this.use = function (langKey) {
+    if (langKey) {
+      if (!$translationTable[langKey] && (!$loaderFactory)) {
+        // only throw an error, when not loading translation data asynchronously
+        throw new Error('$translateProvider couldn\'t find translationTable for langKey: \'' + langKey + '\'');
+      }
+      $uses = langKey;
+      return this;
+    }
+    return $uses;
+  };
+
+ /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#storageKey
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Tells the module which key must represent the choosed language by a user in the storage.
+   *
+   * @param {string} key A key for the storage.
+   */
+  var storageKey = function(key) {
+    if (!key) {
+      if ($storagePrefix) {
+        return $storagePrefix + $storageKey;
+      }
+      return $storageKey;
+    }
+    $storageKey = key;
+    return this;
+  };
+
+  this.storageKey = storageKey;
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#useUrlLoader
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Tells angular-translate to use `$translateUrlLoader` extension service as loader.
+   *
+   * @param {string} url Url
+   * @param {Object=} options Optional configuration object
+   */
+  this.useUrlLoader = function (url, options) {
+    return this.useLoader('$translateUrlLoader', angular.extend({ url: url }, options));
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#useStaticFilesLoader
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Tells angular-translate to use `$translateStaticFilesLoader` extension service as loader.
+   *
+   * @param {Object=} options Optional configuration object
+   */
+  this.useStaticFilesLoader = function (options) {
+    return this.useLoader('$translateStaticFilesLoader', options);
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#useLoader
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Tells angular-translate to use any other service as loader.
+   *
+   * @param {string} loaderFactory Factory name to use
+   * @param {Object=} options Optional configuration object
+   */
+  this.useLoader = function (loaderFactory, options) {
+    $loaderFactory = loaderFactory;
+    $loaderOptions = options || {};
+    return this;
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#useLocalStorage
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Tells angular-translate to use `$translateLocalStorage` service as storage layer.
+   *
+   */
+  this.useLocalStorage = function () {
+    return this.useStorage('$translateLocalStorage');
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#useCookieStorage
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Tells angular-translate to use `$translateCookieStorage` service as storage layer.
+   */
+  this.useCookieStorage = function () {
+    return this.useStorage('$translateCookieStorage');
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#useStorage
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Tells angular-translate to use custom service as storage layer.
+   */
+  this.useStorage = function (storageFactory) {
+    $storageFactory = storageFactory;
+    return this;
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#storagePrefix
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Sets prefix for storage key.
+   *
+   * @param {string} prefix Storage key prefix
+   */
+  this.storagePrefix = function (prefix) {
+    if (!prefix) {
+      return prefix;
+    }
+    $storagePrefix = prefix;
+    return this;
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#useMissingTranslationHandlerLog
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Tells angular-translate to use built-in log handler when trying to translate
+   * a translation Id which doesn't exist.
+   *
+   * This is actually a shortcut method for `useMissingTranslationHandler()`.
+   *
+   */
+  this.useMissingTranslationHandlerLog = function () {
+    return this.useMissingTranslationHandler('$translateMissingTranslationHandlerLog');
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#useMissingTranslationHandler
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Expects a factory name which later gets instantiated with `$injector`.
+   * This method can be used to tell angular-translate to use a custom
+   * missingTranslationHandler. Just build a factory which returns a function
+   * and expects a translation id as argument.
+   *
+   * Example:
+   * <pre>
+   *  app.config(function ($translateProvider) {
+   *    $translateProvider.useMissingTranslationHandler('customHandler');
+   *  });
+   *
+   *  app.factory('customHandler', function (dep1, dep2) {
+   *    return function (translationId) {
+   *      // something with translationId and dep1 and dep2
+   *    };
+   *  });
+   * </pre>
+   *
+   * @param {string} factory Factory name
+   */
+  this.useMissingTranslationHandler = function (factory) {
+    $missingTranslationHandlerFactory = factory;
+    return this;
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#usePostCompiling
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * If post compiling is enabled, all translated values will be processed
+   * again with AngularJS' $compile.
+   *
+   * Example:
+   * <pre>
+   *  app.config(function ($translateProvider) {
+   *    $translateProvider.usePostCompiling(true);
+   *  });
+   * </pre>
+   *
+   * @param {string} factory Factory name
+   */
+  this.usePostCompiling = function (value) {
+    $postCompilingEnabled = !(!value);
+    return this;
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#forceAsyncReload
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * If force async reload is enabled, async loader will always be called
+   * even if $translationTable already contains the language key, adding
+   * possible new entries to the $translationTable.
+   *
+   * Example:
+   * <pre>
+   *  app.config(function ($translateProvider) {
+   *    $translateProvider.forceAsyncReload(true);
+   *  });
+   * </pre>
+   *
+   * @param {boolean} value - valid values are true or false
+   */
+  this.forceAsyncReload = function (value) {
+    $forceAsyncReloadEnabled = !(!value);
+    return this;
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#uniformLanguageTag
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Tells angular-translate which language tag should be used as a result when determining
+   * the current browser language.
+   *
+   * This setting must be set before invoking {@link pascalprecht.translate.$translateProvider#methods_determinePreferredLanguage determinePreferredLanguage()}.
+   *
+   * <pre>
+   * $translateProvider
+   *   .uniformLanguageTag('bcp47')
+   *   .determinePreferredLanguage()
+   * </pre>
+   *
+   * The resolver currently supports:
+   * * default
+   *     (traditionally: hyphens will be converted into underscores, i.e. en-US => en_US)
+   *     en-US => en_US
+   *     en_US => en_US
+   *     en-us => en_us
+   * * java
+   *     like default, but the second part will be always in uppercase
+   *     en-US => en_US
+   *     en_US => en_US
+   *     en-us => en_US
+   * * BCP 47 (RFC 4646 & 4647)
+   *     en-US => en-US
+   *     en_US => en-US
+   *     en-us => en-US
+   *
+   * See also:
+   * * http://en.wikipedia.org/wiki/IETF_language_tag
+   * * http://www.w3.org/International/core/langtags/
+   * * http://tools.ietf.org/html/bcp47
+   *
+   * @param {string|object} options - options (or standard)
+   * @param {string} options.standard - valid values are 'default', 'bcp47', 'java'
+   */
+  this.uniformLanguageTag = function (options) {
+
+    if (!options) {
+      options = {};
+    } else if (angular.isString(options)) {
+      options = {
+        standard: options
+      };
+    }
+
+    uniformLanguageTagResolver = options.standard;
+
+    return this;
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#determinePreferredLanguage
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Tells angular-translate to try to determine on its own which language key
+   * to set as preferred language. When `fn` is given, angular-translate uses it
+   * to determine a language key, otherwise it uses the built-in `getLocale()`
+   * method.
+   *
+   * The `getLocale()` returns a language key in the format `[lang]_[country]` or
+   * `[lang]` depending on what the browser provides.
+   *
+   * Use this method at your own risk, since not all browsers return a valid
+   * locale (see {@link pascalprecht.translate.$translateProvider#methods_uniformLanguageTag uniformLanguageTag()}).
+   *
+   * @param {Function=} fn Function to determine a browser's locale
+   */
+  this.determinePreferredLanguage = function (fn) {
+
+    var locale = (fn && angular.isFunction(fn)) ? fn() : getLocale();
+
+    if (!$availableLanguageKeys.length) {
+      $preferredLanguage = locale;
+    } else {
+      $preferredLanguage = negotiateLocale(locale);
+    }
+
+    return this;
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#registerAvailableLanguageKeys
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Registers a set of language keys the app will work with. Use this method in
+   * combination with
+   * {@link pascalprecht.translate.$translateProvider#determinePreferredLanguage determinePreferredLanguage}.
+   * When available languages keys are registered, angular-translate
+   * tries to find the best fitting language key depending on the browsers locale,
+   * considering your language key convention.
+   *
+   * @param {object} languageKeys Array of language keys the your app will use
+   * @param {object=} aliases Alias map.
+   */
+  this.registerAvailableLanguageKeys = function (languageKeys, aliases) {
+    if (languageKeys) {
+      $availableLanguageKeys = languageKeys;
+      if (aliases) {
+        $languageKeyAliases = aliases;
+      }
+      return this;
+    }
+    return $availableLanguageKeys;
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#useLoaderCache
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Registers a cache for internal $http based loaders.
+   * {@link pascalprecht.translate.$translateProvider#determinePreferredLanguage determinePreferredLanguage}.
+   * When false the cache will be disabled (default). When true or undefined
+   * the cache will be a default (see $cacheFactory). When an object it will
+   * be treat as a cache object itself: the usage is $http({cache: cache})
+   *
+   * @param {object} cache boolean, string or cache-object
+   */
+  this.useLoaderCache = function (cache) {
+    if (cache === false) {
+      // disable cache
+      loaderCache = undefined;
+    } else if (cache === true) {
+      // enable cache using AJS defaults
+      loaderCache = true;
+    } else if (typeof(cache) === 'undefined') {
+      // enable cache using default
+      loaderCache = '$translationCache';
+    } else if (cache) {
+      // enable cache using given one (see $cacheFactory)
+      loaderCache = cache;
+    }
+    return this;
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#directivePriority
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Sets the default priority of the translate directive. The standard value is `0`.
+   * Calling this function without an argument will return the current value.
+   *
+   * @param {number} priority for the translate-directive
+   */
+  this.directivePriority = function (priority) {
+    if (priority === undefined) {
+      // getter
+      return directivePriority;
+    } else {
+      // setter with chaining
+      directivePriority = priority;
+      return this;
+    }
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateProvider#statefulFilter
+   * @methodOf pascalprecht.translate.$translateProvider
+   *
+   * @description
+   * Since AngularJS 1.3, filters which are not stateless (depending at the scope)
+   * have to explicit define this behavior.
+   * Sets whether the translate filter should be stateful or stateless. The standard value is `true`
+   * meaning being stateful.
+   * Calling this function without an argument will return the current value.
+   *
+   * @param {boolean} state - defines the state of the filter
+   */
+  this.statefulFilter = function (state) {
+    if (state === undefined) {
+      // getter
+      return statefulFilter;
+    } else {
+      // setter with chaining
+      statefulFilter = state;
+      return this;
+    }
+  };
+
+  /**
+   * @ngdoc object
+   * @name pascalprecht.translate.$translate
+   * @requires $interpolate
+   * @requires $log
+   * @requires $rootScope
+   * @requires $q
+   *
+   * @description
+   * The `$translate` service is the actual core of angular-translate. It expects a translation id
+   * and optional interpolate parameters to translate contents.
+   *
+   * <pre>
+   *  $translate('HEADLINE_TEXT').then(function (translation) {
+   *    $scope.translatedText = translation;
+   *  });
+   * </pre>
+   *
+   * @param {string|array} translationId A token which represents a translation id
+   *                                     This can be optionally an array of translation ids which
+   *                                     results that the function returns an object where each key
+   *                                     is the translation id and the value the translation.
+   * @param {object=} interpolateParams An object hash for dynamic values
+   * @param {string} interpolationId The id of the interpolation to use
+   * @returns {object} promise
+   */
+  this.$get = [
+    '$log',
+    '$injector',
+    '$rootScope',
+    '$q',
+    function ($log, $injector, $rootScope, $q) {
+
+      var Storage,
+          defaultInterpolator = $injector.get($interpolationFactory || '$translateDefaultInterpolation'),
+          pendingLoader = false,
+          interpolatorHashMap = {},
+          langPromises = {},
+          fallbackIndex,
+          startFallbackIteration;
+
+      var $translate = function (translationId, interpolateParams, interpolationId, defaultTranslationText) {
+
+        // Duck detection: If the first argument is an array, a bunch of translations was requested.
+        // The result is an object.
+        if (angular.isArray(translationId)) {
+          // Inspired by Q.allSettled by Kris Kowal
+          // https://github.com/kriskowal/q/blob/b0fa72980717dc202ffc3cbf03b936e10ebbb9d7/q.js#L1553-1563
+          // This transforms all promises regardless resolved or rejected
+          var translateAll = function (translationIds) {
+            var results = {}; // storing the actual results
+            var promises = []; // promises to wait for
+            // Wraps the promise a) being always resolved and b) storing the link id->value
+            var translate = function (translationId) {
+              var deferred = $q.defer();
+              var regardless = function (value) {
+                results[translationId] = value;
+                deferred.resolve([translationId, value]);
+              };
+              // we don't care whether the promise was resolved or rejected; just store the values
+              $translate(translationId, interpolateParams, interpolationId, defaultTranslationText).then(regardless, regardless);
+              return deferred.promise;
+            };
+            for (var i = 0, c = translationIds.length; i < c; i++) {
+              promises.push(translate(translationIds[i]));
+            }
+            // wait for all (including storing to results)
+            return $q.all(promises).then(function () {
+              // return the results
+              return results;
+            });
+          };
+          return translateAll(translationId);
+        }
+
+        var deferred = $q.defer();
+
+        // trim off any whitespace
+        if (translationId) {
+          translationId = trim.apply(translationId);
+        }
+
+        var promiseToWaitFor = (function () {
+          var promise = $preferredLanguage ?
+            langPromises[$preferredLanguage] :
+            langPromises[$uses];
+
+          fallbackIndex = 0;
+
+          if ($storageFactory && !promise) {
+            // looks like there's no pending promise for $preferredLanguage or
+            // $uses. Maybe there's one pending for a language that comes from
+            // storage.
+            var langKey = Storage.get($storageKey);
+            promise = langPromises[langKey];
+
+            if ($fallbackLanguage && $fallbackLanguage.length) {
+                var index = indexOf($fallbackLanguage, langKey);
+                // maybe the language from storage is also defined as fallback language
+                // we increase the fallback language index to not search in that language
+                // as fallback, since it's probably the first used language
+                // in that case the index starts after the first element
+                fallbackIndex = (index === 0) ? 1 : 0;
+
+                // but we can make sure to ALWAYS fallback to preferred language at least
+                if (indexOf($fallbackLanguage, $preferredLanguage) < 0) {
+                  $fallbackLanguage.push($preferredLanguage);
+                }
+            }
+          }
+          return promise;
+        }());
+
+        if (!promiseToWaitFor) {
+          // no promise to wait for? okay. Then there's no loader registered
+          // nor is a one pending for language that comes from storage.
+          // We can just translate.
+          determineTranslation(translationId, interpolateParams, interpolationId, defaultTranslationText).then(deferred.resolve, deferred.reject);
+        } else {
+          var promiseResolved = function () {
+            determineTranslation(translationId, interpolateParams, interpolationId, defaultTranslationText).then(deferred.resolve, deferred.reject);
+          };
+          promiseResolved.displayName = 'promiseResolved';
+
+          promiseToWaitFor['finally'](promiseResolved, deferred.reject);
+        }
+        return deferred.promise;
+      };
+
+      /**
+       * @name applyNotFoundIndicators
+       * @private
+       *
+       * @description
+       * Applies not fount indicators to given translation id, if needed.
+       * This function gets only executed, if a translation id doesn't exist,
+       * which is why a translation id is expected as argument.
+       *
+       * @param {string} translationId Translation id.
+       * @returns {string} Same as given translation id but applied with not found
+       * indicators.
+       */
+      var applyNotFoundIndicators = function (translationId) {
+        // applying notFoundIndicators
+        if ($notFoundIndicatorLeft) {
+          translationId = [$notFoundIndicatorLeft, translationId].join(' ');
+        }
+        if ($notFoundIndicatorRight) {
+          translationId = [translationId, $notFoundIndicatorRight].join(' ');
+        }
+        return translationId;
+      };
+
+      /**
+       * @name useLanguage
+       * @private
+       *
+       * @description
+       * Makes actual use of a language by setting a given language key as used
+       * language and informs registered interpolators to also use the given
+       * key as locale.
+       *
+       * @param {key} Locale key.
+       */
+      var useLanguage = function (key) {
+        $uses = key;
+        $rootScope.$emit('$translateChangeSuccess', {language: key});
+
+        if ($storageFactory) {
+          Storage.put($translate.storageKey(), $uses);
+        }
+        // inform default interpolator
+        defaultInterpolator.setLocale($uses);
+
+        var eachInterpolator = function (interpolator, id) {
+          interpolatorHashMap[id].setLocale($uses);
+        };
+        eachInterpolator.displayName = 'eachInterpolatorLocaleSetter';
+
+        // inform all others too!
+        angular.forEach(interpolatorHashMap, eachInterpolator);
+        $rootScope.$emit('$translateChangeEnd', {language: key});
+      };
+
+      /**
+       * @name loadAsync
+       * @private
+       *
+       * @description
+       * Kicks of registered async loader using `$injector` and applies existing
+       * loader options. When resolved, it updates translation tables accordingly
+       * or rejects with given language key.
+       *
+       * @param {string} key Language key.
+       * @return {Promise} A promise.
+       */
+      var loadAsync = function (key) {
+        if (!key) {
+          throw 'No language key specified for loading.';
+        }
+
+        var deferred = $q.defer();
+
+        $rootScope.$emit('$translateLoadingStart', {language: key});
+        pendingLoader = true;
+
+        var cache = loaderCache;
+        if (typeof(cache) === 'string') {
+          // getting on-demand instance of loader
+          cache = $injector.get(cache);
+        }
+
+        var loaderOptions = angular.extend({}, $loaderOptions, {
+          key: key,
+          $http: angular.extend({}, {
+            cache: cache
+          }, $loaderOptions.$http)
+        });
+
+        var onLoaderSuccess = function (data) {
+          var translationTable = {};
+          $rootScope.$emit('$translateLoadingSuccess', {language: key});
+
+          if (angular.isArray(data)) {
+            angular.forEach(data, function (table) {
+              angular.extend(translationTable, flatObject(table));
+            });
+          } else {
+            angular.extend(translationTable, flatObject(data));
+          }
+          pendingLoader = false;
+          deferred.resolve({
+            key: key,
+            table: translationTable
+          });
+          $rootScope.$emit('$translateLoadingEnd', {language: key});
+        };
+        onLoaderSuccess.displayName = 'onLoaderSuccess';
+
+        var onLoaderError = function (key) {
+          $rootScope.$emit('$translateLoadingError', {language: key});
+          deferred.reject(key);
+          $rootScope.$emit('$translateLoadingEnd', {language: key});
+        };
+        onLoaderError.displayName = 'onLoaderError';
+
+        $injector.get($loaderFactory)(loaderOptions)
+          .then(onLoaderSuccess, onLoaderError);
+
+        return deferred.promise;
+      };
+
+      if ($storageFactory) {
+        Storage = $injector.get($storageFactory);
+
+        if (!Storage.get || !Storage.put) {
+          throw new Error('Couldn\'t use storage \'' + $storageFactory + '\', missing get() or put() method!');
+        }
+      }
+
+      // if we have additional interpolations that were added via
+      // $translateProvider.addInterpolation(), we have to map'em
+      if ($interpolatorFactories.length) {
+        var eachInterpolationFactory = function (interpolatorFactory) {
+          var interpolator = $injector.get(interpolatorFactory);
+          // setting initial locale for each interpolation service
+          interpolator.setLocale($preferredLanguage || $uses);
+          // make'em recognizable through id
+          interpolatorHashMap[interpolator.getInterpolationIdentifier()] = interpolator;
+        };
+        eachInterpolationFactory.displayName = 'interpolationFactoryAdder';
+
+        angular.forEach($interpolatorFactories, eachInterpolationFactory);
+      }
+
+      /**
+       * @name getTranslationTable
+       * @private
+       *
+       * @description
+       * Returns a promise that resolves to the translation table
+       * or is rejected if an error occurred.
+       *
+       * @param langKey
+       * @returns {Q.promise}
+       */
+      var getTranslationTable = function (langKey) {
+        var deferred = $q.defer();
+        if (Object.prototype.hasOwnProperty.call($translationTable, langKey)) {
+          deferred.resolve($translationTable[langKey]);
+        } else if (langPromises[langKey]) {
+          var onResolve = function (data) {
+            translations(data.key, data.table);
+            deferred.resolve(data.table);
+          };
+          onResolve.displayName = 'translationTableResolver';
+          langPromises[langKey].then(onResolve, deferred.reject);
+        } else {
+          deferred.reject();
+        }
+        return deferred.promise;
+      };
+
+      /**
+       * @name getFallbackTranslation
+       * @private
+       *
+       * @description
+       * Returns a promise that will resolve to the translation
+       * or be rejected if no translation was found for the language.
+       * This function is currently only used for fallback language translation.
+       *
+       * @param langKey The language to translate to.
+       * @param translationId
+       * @param interpolateParams
+       * @param Interpolator
+       * @returns {Q.promise}
+       */
+      var getFallbackTranslation = function (langKey, translationId, interpolateParams, Interpolator) {
+        var deferred = $q.defer();
+
+        var onResolve = function (translationTable) {
+          if (Object.prototype.hasOwnProperty.call(translationTable, translationId)) {
+            Interpolator.setLocale(langKey);
+            var translation = translationTable[translationId];
+            if (translation.substr(0, 2) === '@:') {
+              getFallbackTranslation(langKey, translation.substr(2), interpolateParams, Interpolator)
+                .then(deferred.resolve, deferred.reject);
+            } else {
+              deferred.resolve(Interpolator.interpolate(translationTable[translationId], interpolateParams));
+            }
+            Interpolator.setLocale($uses);
+          } else {
+            deferred.reject();
+          }
+        };
+        onResolve.displayName = 'fallbackTranslationResolver';
+
+        getTranslationTable(langKey).then(onResolve, deferred.reject);
+
+        return deferred.promise;
+      };
+
+      /**
+       * @name getFallbackTranslationInstant
+       * @private
+       *
+       * @description
+       * Returns a translation
+       * This function is currently only used for fallback language translation.
+       *
+       * @param langKey The language to translate to.
+       * @param translationId
+       * @param interpolateParams
+       * @param Interpolator
+       * @returns {string} translation
+       */
+      var getFallbackTranslationInstant = function (langKey, translationId, interpolateParams, Interpolator) {
+        var result, translationTable = $translationTable[langKey];
+
+        if (translationTable && Object.prototype.hasOwnProperty.call(translationTable, translationId)) {
+          Interpolator.setLocale(langKey);
+          result = Interpolator.interpolate(translationTable[translationId], interpolateParams);
+          if (result.substr(0, 2) === '@:') {
+            return getFallbackTranslationInstant(langKey, result.substr(2), interpolateParams, Interpolator);
+          }
+          Interpolator.setLocale($uses);
+        }
+
+        return result;
+      };
+
+
+      /**
+       * @name translateByHandler
+       * @private
+       *
+       * Translate by missing translation handler.
+       *
+       * @param translationId
+       * @returns translation created by $missingTranslationHandler or translationId is $missingTranslationHandler is
+       * absent
+       */
+      var translateByHandler = function (translationId, interpolateParams) {
+        // If we have a handler factory - we might also call it here to determine if it provides
+        // a default text for a translationid that can't be found anywhere in our tables
+        if ($missingTranslationHandlerFactory) {
+          var resultString = $injector.get($missingTranslationHandlerFactory)(translationId, $uses, interpolateParams);
+          if (resultString !== undefined) {
+            return resultString;
+          } else {
+            return translationId;
+          }
+        } else {
+          return translationId;
+        }
+      };
+
+      /**
+       * @name resolveForFallbackLanguage
+       * @private
+       *
+       * Recursive helper function for fallbackTranslation that will sequentially look
+       * for a translation in the fallbackLanguages starting with fallbackLanguageIndex.
+       *
+       * @param fallbackLanguageIndex
+       * @param translationId
+       * @param interpolateParams
+       * @param Interpolator
+       * @returns {Q.promise} Promise that will resolve to the translation.
+       */
+      var resolveForFallbackLanguage = function (fallbackLanguageIndex, translationId, interpolateParams, Interpolator, defaultTranslationText) {
+        var deferred = $q.defer();
+
+        if (fallbackLanguageIndex < $fallbackLanguage.length) {
+          var langKey = $fallbackLanguage[fallbackLanguageIndex];
+          getFallbackTranslation(langKey, translationId, interpolateParams, Interpolator).then(
+            deferred.resolve,
+            function () {
+              // Look in the next fallback language for a translation.
+              // It delays the resolving by passing another promise to resolve.
+              resolveForFallbackLanguage(fallbackLanguageIndex + 1, translationId, interpolateParams, Interpolator, defaultTranslationText).then(deferred.resolve);
+            }
+          );
+        } else {
+          // No translation found in any fallback language
+          // if a default translation text is set in the directive, then return this as a result
+          if (defaultTranslationText) {
+            deferred.resolve(defaultTranslationText);
+          } else {
+            // if no default translation is set and an error handler is defined, send it to the handler
+            // and then return the result
+            deferred.resolve(translateByHandler(translationId, interpolateParams));
+          }
+        }
+        return deferred.promise;
+      };
+
+      /**
+       * @name resolveForFallbackLanguageInstant
+       * @private
+       *
+       * Recursive helper function for fallbackTranslation that will sequentially look
+       * for a translation in the fallbackLanguages starting with fallbackLanguageIndex.
+       *
+       * @param fallbackLanguageIndex
+       * @param translationId
+       * @param interpolateParams
+       * @param Interpolator
+       * @returns {string} translation
+       */
+      var resolveForFallbackLanguageInstant = function (fallbackLanguageIndex, translationId, interpolateParams, Interpolator) {
+        var result;
+
+        if (fallbackLanguageIndex < $fallbackLanguage.length) {
+          var langKey = $fallbackLanguage[fallbackLanguageIndex];
+          result = getFallbackTranslationInstant(langKey, translationId, interpolateParams, Interpolator);
+          if (!result) {
+            result = resolveForFallbackLanguageInstant(fallbackLanguageIndex + 1, translationId, interpolateParams, Interpolator);
+          }
+        }
+        return result;
+      };
+
+      /**
+       * Translates with the usage of the fallback languages.
+       *
+       * @param translationId
+       * @param interpolateParams
+       * @param Interpolator
+       * @returns {Q.promise} Promise, that resolves to the translation.
+       */
+      var fallbackTranslation = function (translationId, interpolateParams, Interpolator, defaultTranslationText) {
+        // Start with the fallbackLanguage with index 0
+        return resolveForFallbackLanguage((startFallbackIteration>0 ? startFallbackIteration : fallbackIndex), translationId, interpolateParams, Interpolator, defaultTranslationText);
+      };
+
+      /**
+       * Translates with the usage of the fallback languages.
+       *
+       * @param translationId
+       * @param interpolateParams
+       * @param Interpolator
+       * @returns {String} translation
+       */
+      var fallbackTranslationInstant = function (translationId, interpolateParams, Interpolator) {
+        // Start with the fallbackLanguage with index 0
+        return resolveForFallbackLanguageInstant((startFallbackIteration>0 ? startFallbackIteration : fallbackIndex), translationId, interpolateParams, Interpolator);
+      };
+
+      var determineTranslation = function (translationId, interpolateParams, interpolationId, defaultTranslationText) {
+
+        var deferred = $q.defer();
+
+        var table = $uses ? $translationTable[$uses] : $translationTable,
+            Interpolator = (interpolationId) ? interpolatorHashMap[interpolationId] : defaultInterpolator;
+
+        // if the translation id exists, we can just interpolate it
+        if (table && Object.prototype.hasOwnProperty.call(table, translationId)) {
+          var translation = table[translationId];
+
+          // If using link, rerun $translate with linked translationId and return it
+          if (translation.substr(0, 2) === '@:') {
+
+            $translate(translation.substr(2), interpolateParams, interpolationId, defaultTranslationText)
+              .then(deferred.resolve, deferred.reject);
+          } else {
+            deferred.resolve(Interpolator.interpolate(translation, interpolateParams));
+          }
+        } else {
+          var missingTranslationHandlerTranslation;
+          // for logging purposes only (as in $translateMissingTranslationHandlerLog), value is not returned to promise
+          if ($missingTranslationHandlerFactory && !pendingLoader) {
+            missingTranslationHandlerTranslation = translateByHandler(translationId, interpolateParams);
+          }
+
+          // since we couldn't translate the inital requested translation id,
+          // we try it now with one or more fallback languages, if fallback language(s) is
+          // configured.
+          if ($uses && $fallbackLanguage && $fallbackLanguage.length) {
+            fallbackTranslation(translationId, interpolateParams, Interpolator, defaultTranslationText)
+                .then(function (translation) {
+                  deferred.resolve(translation);
+                }, function (_translationId) {
+                  deferred.reject(applyNotFoundIndicators(_translationId));
+                });
+          } else if ($missingTranslationHandlerFactory && !pendingLoader && missingTranslationHandlerTranslation) {
+            // looks like the requested translation id doesn't exists.
+            // Now, if there is a registered handler for missing translations and no
+            // asyncLoader is pending, we execute the handler
+            if (defaultTranslationText) {
+              deferred.resolve(defaultTranslationText);
+              } else {
+                deferred.resolve(missingTranslationHandlerTranslation);
+              }
+          } else {
+            if (defaultTranslationText) {
+              deferred.resolve(defaultTranslationText);
+            } else {
+              deferred.reject(applyNotFoundIndicators(translationId));
+            }
+          }
+        }
+        return deferred.promise;
+      };
+
+      var determineTranslationInstant = function (translationId, interpolateParams, interpolationId) {
+
+        var result, table = $uses ? $translationTable[$uses] : $translationTable,
+            Interpolator = defaultInterpolator;
+
+        // if the interpolation id exists use custom interpolator
+        if (interpolatorHashMap && Object.prototype.hasOwnProperty.call(interpolatorHashMap, interpolationId)) {
+          Interpolator = interpolatorHashMap[interpolationId];
+        }
+
+        // if the translation id exists, we can just interpolate it
+        if (table && Object.prototype.hasOwnProperty.call(table, translationId)) {
+          var translation = table[translationId];
+
+          // If using link, rerun $translate with linked translationId and return it
+          if (translation.substr(0, 2) === '@:') {
+            result = determineTranslationInstant(translation.substr(2), interpolateParams, interpolationId);
+          } else {
+            result = Interpolator.interpolate(translation, interpolateParams);
+          }
+        } else {
+          var missingTranslationHandlerTranslation;
+          // for logging purposes only (as in $translateMissingTranslationHandlerLog), value is not returned to promise
+          if ($missingTranslationHandlerFactory && !pendingLoader) {
+            missingTranslationHandlerTranslation = translateByHandler(translationId, interpolateParams);
+          }
+
+          // since we couldn't translate the inital requested translation id,
+          // we try it now with one or more fallback languages, if fallback language(s) is
+          // configured.
+          if ($uses && $fallbackLanguage && $fallbackLanguage.length) {
+            fallbackIndex = 0;
+            result = fallbackTranslationInstant(translationId, interpolateParams, Interpolator);
+          } else if ($missingTranslationHandlerFactory && !pendingLoader && missingTranslationHandlerTranslation) {
+            // looks like the requested translation id doesn't exists.
+            // Now, if there is a registered handler for missing translations and no
+            // asyncLoader is pending, we execute the handler
+            result = missingTranslationHandlerTranslation;
+          } else {
+            result = applyNotFoundIndicators(translationId);
+          }
+        }
+
+        return result;
+      };
+
+      var clearNextLangAndPromise = function(key) {
+        if ($nextLang === key) {
+          $nextLang = undefined;
+        }
+        langPromises[key] = undefined;
+      };
+
+      /**
+       * @ngdoc function
+       * @name pascalprecht.translate.$translate#preferredLanguage
+       * @methodOf pascalprecht.translate.$translate
+       *
+       * @description
+       * Returns the language key for the preferred language.
+       *
+       * @param {string} langKey language String or Array to be used as preferredLanguage (changing at runtime)
+       *
+       * @return {string} preferred language key
+       */
+      $translate.preferredLanguage = function (langKey) {
+        if(langKey) {
+          setupPreferredLanguage(langKey);
+        }
+        return $preferredLanguage;
+      };
+
+      /**
+       * @ngdoc function
+       * @name pascalprecht.translate.$translate#cloakClassName
+       * @methodOf pascalprecht.translate.$translate
+       *
+       * @description
+       * Returns the configured class name for `translate-cloak` directive.
+       *
+       * @return {string} cloakClassName
+       */
+      $translate.cloakClassName = function () {
+        return $cloakClassName;
+      };
+
+      /**
+       * @ngdoc function
+       * @name pascalprecht.translate.$translate#fallbackLanguage
+       * @methodOf pascalprecht.translate.$translate
+       *
+       * @description
+       * Returns the language key for the fallback languages or sets a new fallback stack.
+       *
+       * @param {string=} langKey language String or Array of fallback languages to be used (to change stack at runtime)
+       *
+       * @return {string||array} fallback language key
+       */
+      $translate.fallbackLanguage = function (langKey) {
+        if (langKey !== undefined && langKey !== null) {
+          fallbackStack(langKey);
+
+          // as we might have an async loader initiated and a new translation language might have been defined
+          // we need to add the promise to the stack also. So - iterate.
+          if ($loaderFactory) {
+            if ($fallbackLanguage && $fallbackLanguage.length) {
+              for (var i = 0, len = $fallbackLanguage.length; i < len; i++) {
+                if (!langPromises[$fallbackLanguage[i]]) {
+                  langPromises[$fallbackLanguage[i]] = loadAsync($fallbackLanguage[i]);
+                }
+              }
+            }
+          }
+          $translate.use($translate.use());
+        }
+        if ($fallbackWasString) {
+          return $fallbackLanguage[0];
+        } else {
+          return $fallbackLanguage;
+        }
+
+      };
+
+      /**
+       * @ngdoc function
+       * @name pascalprecht.translate.$translate#useFallbackLanguage
+       * @methodOf pascalprecht.translate.$translate
+       *
+       * @description
+       * Sets the first key of the fallback language stack to be used for translation.
+       * Therefore all languages in the fallback array BEFORE this key will be skipped!
+       *
+       * @param {string=} langKey Contains the langKey the iteration shall start with. Set to false if you want to
+       * get back to the whole stack
+       */
+      $translate.useFallbackLanguage = function (langKey) {
+        if (langKey !== undefined && langKey !== null) {
+          if (!langKey) {
+            startFallbackIteration = 0;
+          } else {
+            var langKeyPosition = indexOf($fallbackLanguage, langKey);
+            if (langKeyPosition > -1) {
+              startFallbackIteration = langKeyPosition;
+            }
+          }
+
+        }
+
+      };
+
+      /**
+       * @ngdoc function
+       * @name pascalprecht.translate.$translate#proposedLanguage
+       * @methodOf pascalprecht.translate.$translate
+       *
+       * @description
+       * Returns the language key of language that is currently loaded asynchronously.
+       *
+       * @return {string} language key
+       */
+      $translate.proposedLanguage = function () {
+        return $nextLang;
+      };
+
+      /**
+       * @ngdoc function
+       * @name pascalprecht.translate.$translate#storage
+       * @methodOf pascalprecht.translate.$translate
+       *
+       * @description
+       * Returns registered storage.
+       *
+       * @return {object} Storage
+       */
+      $translate.storage = function () {
+        return Storage;
+      };
+
+      /**
+       * @ngdoc function
+       * @name pascalprecht.translate.$translate#use
+       * @methodOf pascalprecht.translate.$translate
+       *
+       * @description
+       * Tells angular-translate which language to use by given language key. This method is
+       * used to change language at runtime. It also takes care of storing the language
+       * key in a configured store to let your app remember the choosed language.
+       *
+       * When trying to 'use' a language which isn't available it tries to load it
+       * asynchronously with registered loaders.
+       *
+       * Returns promise object with loaded language file data
+       * @example
+       * $translate.use("en_US").then(function(data){
+       *   $scope.text = $translate("HELLO");
+       * });
+       *
+       * @param {string} key Language key
+       * @return {string} Language key
+       */
+      $translate.use = function (key) {
+        if (!key) {
+          return $uses;
+        }
+
+        var deferred = $q.defer();
+
+        $rootScope.$emit('$translateChangeStart', {language: key});
+
+        // Try to get the aliased language key
+        var aliasedKey = negotiateLocale(key);
+        if (aliasedKey) {
+          key = aliasedKey;
+        }
+
+        // if there isn't a translation table for the language we've requested,
+        // we load it asynchronously
+        if (($forceAsyncReloadEnabled || !$translationTable[key]) && $loaderFactory && !langPromises[key]) {
+          $nextLang = key;
+          langPromises[key] = loadAsync(key).then(function (translation) {
+            translations(translation.key, translation.table);
+            deferred.resolve(translation.key);
+            useLanguage(translation.key);
+            return translation;
+          }, function (key) {
+            $rootScope.$emit('$translateChangeError', {language: key});
+            deferred.reject(key);
+            $rootScope.$emit('$translateChangeEnd', {language: key});
+            return $q.reject(key);
+          });
+          langPromises[key]['finally'](function () {
+            clearNextLangAndPromise(key);
+          });
+        } else if ($nextLang === key && langPromises[key]) {
+          // we are already loading this asynchronously
+          // resolve our new deferred when the old langPromise is resolved
+          langPromises[key].then(function (translation) {
+            deferred.resolve(translation.key);
+            return translation;
+          }, function (key) {
+            deferred.reject(key);
+            return $q.reject(key);
+          });
+        } else {
+          deferred.resolve(key);
+          useLanguage(key);
+        }
+
+        return deferred.promise;
+      };
+
+      /**
+       * @ngdoc function
+       * @name pascalprecht.translate.$translate#storageKey
+       * @methodOf pascalprecht.translate.$translate
+       *
+       * @description
+       * Returns the key for the storage.
+       *
+       * @return {string} storage key
+       */
+      $translate.storageKey = function () {
+        return storageKey();
+      };
+
+      /**
+       * @ngdoc function
+       * @name pascalprecht.translate.$translate#isPostCompilingEnabled
+       * @methodOf pascalprecht.translate.$translate
+       *
+       * @description
+       * Returns whether post compiling is enabled or not
+       *
+       * @return {bool} storage key
+       */
+      $translate.isPostCompilingEnabled = function () {
+        return $postCompilingEnabled;
+      };
+
+      /**
+       * @ngdoc function
+       * @name pascalprecht.translate.$translate#isForceAsyncReloadEnabled
+       * @methodOf pascalprecht.translate.$translate
+       *
+       * @description
+       * Returns whether force async reload is enabled or not
+       *
+       * @return {boolean} forceAsyncReload value
+       */
+      $translate.isForceAsyncReloadEnabled = function () {
+        return $forceAsyncReloadEnabled;
+      };
+
+      /**
+       * @ngdoc function
+       * @name pascalprecht.translate.$translate#refresh
+       * @methodOf pascalprecht.translate.$translate
+       *
+       * @description
+       * Refreshes a translation table pointed by the given langKey. If langKey is not specified,
+       * the module will drop all existent translation tables and load new version of those which
+       * are currently in use.
+       *
+       * Refresh means that the module will drop target translation table and try to load it again.
+       *
+       * In case there are no loaders registered the refresh() method will throw an Error.
+       *
+       * If the module is able to refresh translation tables refresh() method will broadcast
+       * $translateRefreshStart and $translateRefreshEnd events.
+       *
+       * @example
+       * // this will drop all currently existent translation tables and reload those which are
+       * // currently in use
+       * $translate.refresh();
+       * // this will refresh a translation table for the en_US language
+       * $translate.refresh('en_US');
+       *
+       * @param {string} langKey A language key of the table, which has to be refreshed
+       *
+       * @return {promise} Promise, which will be resolved in case a translation tables refreshing
+       * process is finished successfully, and reject if not.
+       */
+      $translate.refresh = function (langKey) {
+        if (!$loaderFactory) {
+          throw new Error('Couldn\'t refresh translation table, no loader registered!');
+        }
+
+        var deferred = $q.defer();
+
+        function resolve() {
+          deferred.resolve();
+          $rootScope.$emit('$translateRefreshEnd', {language: langKey});
+        }
+
+        function reject() {
+          deferred.reject();
+          $rootScope.$emit('$translateRefreshEnd', {language: langKey});
+        }
+
+        $rootScope.$emit('$translateRefreshStart', {language: langKey});
+
+        if (!langKey) {
+          // if there's no language key specified we refresh ALL THE THINGS!
+          var tables = [], loadingKeys = {};
+
+          // reload registered fallback languages
+          if ($fallbackLanguage && $fallbackLanguage.length) {
+            for (var i = 0, len = $fallbackLanguage.length; i < len; i++) {
+              tables.push(loadAsync($fallbackLanguage[i]));
+              loadingKeys[$fallbackLanguage[i]] = true;
+            }
+          }
+
+          // reload currently used language
+          if ($uses && !loadingKeys[$uses]) {
+            tables.push(loadAsync($uses));
+          }
+
+          var allTranslationsLoaded = function (tableData) {
+            $translationTable = {};
+            angular.forEach(tableData, function (data) {
+              translations(data.key, data.table);
+            });
+            if ($uses) {
+              useLanguage($uses);
+            }
+            resolve();
+          };
+          allTranslationsLoaded.displayName = 'refreshPostProcessor';
+
+          $q.all(tables).then(allTranslationsLoaded, reject);
+
+        } else if ($translationTable[langKey]) {
+
+          var oneTranslationsLoaded = function (data) {
+            translations(data.key, data.table);
+            if (langKey === $uses) {
+              useLanguage($uses);
+            }
+            resolve();
+          };
+          oneTranslationsLoaded.displayName = 'refreshPostProcessor';
+
+          loadAsync(langKey).then(oneTranslationsLoaded, reject);
+
+        } else {
+          reject();
+        }
+        return deferred.promise;
+      };
+
+      /**
+       * @ngdoc function
+       * @name pascalprecht.translate.$translate#instant
+       * @methodOf pascalprecht.translate.$translate
+       *
+       * @description
+       * Returns a translation instantly from the internal state of loaded translation. All rules
+       * regarding the current language, the preferred language of even fallback languages will be
+       * used except any promise handling. If a language was not found, an asynchronous loading
+       * will be invoked in the background.
+       *
+       * @param {string|array} translationId A token which represents a translation id
+       *                                     This can be optionally an array of translation ids which
+       *                                     results that the function's promise returns an object where
+       *                                     each key is the translation id and the value the translation.
+       * @param {object} interpolateParams Params
+       * @param {string} interpolationId The id of the interpolation to use
+       *
+       * @return {string|object} translation
+       */
+      $translate.instant = function (translationId, interpolateParams, interpolationId) {
+
+        // Detect undefined and null values to shorten the execution and prevent exceptions
+        if (translationId === null || angular.isUndefined(translationId)) {
+          return translationId;
+        }
+
+        // Duck detection: If the first argument is an array, a bunch of translations was requested.
+        // The result is an object.
+        if (angular.isArray(translationId)) {
+          var results = {};
+          for (var i = 0, c = translationId.length; i < c; i++) {
+            results[translationId[i]] = $translate.instant(translationId[i], interpolateParams, interpolationId);
+          }
+          return results;
+        }
+
+        // We discarded unacceptable values. So we just need to verify if translationId is empty String
+        if (angular.isString(translationId) && translationId.length < 1) {
+          return translationId;
+        }
+
+        // trim off any whitespace
+        if (translationId) {
+          translationId = trim.apply(translationId);
+        }
+
+        var result, possibleLangKeys = [];
+        if ($preferredLanguage) {
+          possibleLangKeys.push($preferredLanguage);
+        }
+        if ($uses) {
+          possibleLangKeys.push($uses);
+        }
+        if ($fallbackLanguage && $fallbackLanguage.length) {
+          possibleLangKeys = possibleLangKeys.concat($fallbackLanguage);
+        }
+        for (var j = 0, d = possibleLangKeys.length; j < d; j++) {
+          var possibleLangKey = possibleLangKeys[j];
+          if ($translationTable[possibleLangKey]) {
+            if (typeof $translationTable[possibleLangKey][translationId] !== 'undefined') {
+              result = determineTranslationInstant(translationId, interpolateParams, interpolationId);
+            } else if ($notFoundIndicatorLeft || $notFoundIndicatorRight) {
+              result = applyNotFoundIndicators(translationId);
+            }
+          }
+          if (typeof result !== 'undefined') {
+            break;
+          }
+        }
+
+        if (!result && result !== '') {
+          // Return translation of default interpolator if not found anything.
+          result = defaultInterpolator.interpolate(translationId, interpolateParams);
+          if ($missingTranslationHandlerFactory && !pendingLoader) {
+            result = translateByHandler(translationId, interpolateParams);
+          }
+        }
+
+        return result;
+      };
+
+      /**
+       * @ngdoc function
+       * @name pascalprecht.translate.$translate#versionInfo
+       * @methodOf pascalprecht.translate.$translate
+       *
+       * @description
+       * Returns the current version information for the angular-translate library
+       *
+       * @return {string} angular-translate version
+       */
+      $translate.versionInfo = function () {
+        return version;
+      };
+
+      /**
+       * @ngdoc function
+       * @name pascalprecht.translate.$translate#loaderCache
+       * @methodOf pascalprecht.translate.$translate
+       *
+       * @description
+       * Returns the defined loaderCache.
+       *
+       * @return {boolean|string|object} current value of loaderCache
+       */
+      $translate.loaderCache = function () {
+        return loaderCache;
+      };
+
+      // internal purpose only
+      $translate.directivePriority = function () {
+        return directivePriority;
+      };
+
+      // internal purpose only
+      $translate.statefulFilter = function () {
+        return statefulFilter;
+      };
+
+      if ($loaderFactory) {
+
+        // If at least one async loader is defined and there are no
+        // (default) translations available we should try to load them.
+        if (angular.equals($translationTable, {})) {
+          $translate.use($translate.use());
+        }
+
+        // Also, if there are any fallback language registered, we start
+        // loading them asynchronously as soon as we can.
+        if ($fallbackLanguage && $fallbackLanguage.length) {
+          var processAsyncResult = function (translation) {
+            translations(translation.key, translation.table);
+            $rootScope.$emit('$translateChangeEnd', { language: translation.key });
+            return translation;
+          };
+          for (var i = 0, len = $fallbackLanguage.length; i < len; i++) {
+            var fallbackLanguageId = $fallbackLanguage[i];
+            if ($forceAsyncReloadEnabled || !$translationTable[fallbackLanguageId]) {
+              langPromises[fallbackLanguageId] = loadAsync(fallbackLanguageId).then(processAsyncResult);
+            }
+          }
+        }
+      }
+
+      return $translate;
+    }
+  ];
+}
+$translate.$inject = ['$STORAGE_KEY', '$windowProvider', '$translateSanitizationProvider', 'pascalprechtTranslateOverrider'];
+
+$translate.displayName = 'displayName';
+
+/**
+ * @ngdoc object
+ * @name pascalprecht.translate.$translateDefaultInterpolation
+ * @requires $interpolate
+ *
+ * @description
+ * Uses angular's `$interpolate` services to interpolate strings against some values.
+ *
+ * Be aware to configure a proper sanitization strategy.
+ *
+ * See also:
+ * * {@link pascalprecht.translate.$translateSanitization}
+ *
+ * @return {object} $translateDefaultInterpolation Interpolator service
+ */
+angular.module('pascalprecht.translate').factory('$translateDefaultInterpolation', $translateDefaultInterpolation);
+
+function $translateDefaultInterpolation ($interpolate, $translateSanitization) {
+
+  'use strict';
+
+  var $translateInterpolator = {},
+      $locale,
+      $identifier = 'default';
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateDefaultInterpolation#setLocale
+   * @methodOf pascalprecht.translate.$translateDefaultInterpolation
+   *
+   * @description
+   * Sets current locale (this is currently not use in this interpolation).
+   *
+   * @param {string} locale Language key or locale.
+   */
+  $translateInterpolator.setLocale = function (locale) {
+    $locale = locale;
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateDefaultInterpolation#getInterpolationIdentifier
+   * @methodOf pascalprecht.translate.$translateDefaultInterpolation
+   *
+   * @description
+   * Returns an identifier for this interpolation service.
+   *
+   * @returns {string} $identifier
+   */
+  $translateInterpolator.getInterpolationIdentifier = function () {
+    return $identifier;
+  };
+
+  /**
+   * @deprecated will be removed in 3.0
+   * @see {@link pascalprecht.translate.$translateSanitization}
+   */
+  $translateInterpolator.useSanitizeValueStrategy = function (value) {
+    $translateSanitization.useStrategy(value);
+    return this;
+  };
+
+  /**
+   * @ngdoc function
+   * @name pascalprecht.translate.$translateDefaultInterpolation#interpolate
+   * @methodOf pascalprecht.translate.$translateDefaultInterpolation
+   *
+   * @description
+   * Interpolates given string agains given interpolate params using angulars
+   * `$interpolate` service.
+   *
+   * @returns {string} interpolated string.
+   */
+  $translateInterpolator.interpolate = function (string, interpolationParams) {
+    interpolationParams = interpolationParams || {};
+    interpolationParams = $translateSanitization.sanitize(interpolationParams, 'params');
+
+    var interpolatedText = $interpolate(string)(interpolationParams);
+    interpolatedText = $translateSanitization.sanitize(interpolatedText, 'text');
+
+    return interpolatedText;
+  };
+
+  return $translateInterpolator;
+}
+$translateDefaultInterpolation.$inject = ['$interpolate', '$translateSanitization'];
+
+$translateDefaultInterpolation.displayName = '$translateDefaultInterpolation';
+
+angular.module('pascalprecht.translate').constant('$STORAGE_KEY', 'NG_TRANSLATE_LANG_KEY');
+
+angular.module('pascalprecht.translate')
+/**
+ * @ngdoc directive
+ * @name pascalprecht.translate.directive:translate
+ * @requires $compile
+ * @requires $filter
+ * @requires $interpolate
+ * @restrict A
+ *
+ * @description
+ * Translates given translation id either through attribute or DOM content.
+ * Internally it uses `translate` filter to translate translation id. It possible to
+ * pass an optional `translate-values` object literal as string into translation id.
+ *
+ * @param {string=} translate Translation id which could be either string or interpolated string.
+ * @param {string=} translate-values Values to pass into translation id. Can be passed as object literal string or interpolated object.
+ * @param {string=} translate-attr-ATTR translate Translation id and put it into ATTR attribute.
+ * @param {string=} translate-default will be used unless translation was successful
+ * @param {boolean=} translate-compile (default true if present) defines locally activation of {@link pascalprecht.translate.$translateProvider#methods_usePostCompiling}
+ *
+ * @example
+   <example module="ngView">
+    <file name="index.html">
+      <div ng-controller="TranslateCtrl">
+
+        <pre translate="TRANSLATION_ID"></pre>
+        <pre translate>TRANSLATION_ID</pre>
+        <pre translate translate-attr-title="TRANSLATION_ID"></pre>
+        <pre translate="{{translationId}}"></pre>
+        <pre translate>{{translationId}}</pre>
+        <pre translate="WITH_VALUES" translate-values="{value: 5}"></pre>
+        <pre translate translate-values="{value: 5}">WITH_VALUES</pre>
+        <pre translate="WITH_VALUES" translate-values="{{values}}"></pre>
+        <pre translate translate-values="{{values}}">WITH_VALUES</pre>
+        <pre translate translate-attr-title="WITH_VALUES" translate-values="{{values}}"></pre>
+
+      </div>
+    </file>
+    <file name="script.js">
+      angular.module('ngView', ['pascalprecht.translate'])
+
+      .config(function ($translateProvider) {
+
+        $translateProvider.translations('en',{
+          'TRANSLATION_ID': 'Hello there!',
+          'WITH_VALUES': 'The following value is dynamic: {{value}}'
+        }).preferredLanguage('en');
+
+      });
+
+      angular.module('ngView').controller('TranslateCtrl', function ($scope) {
+        $scope.translationId = 'TRANSLATION_ID';
+
+        $scope.values = {
+          value: 78
+        };
+      });
+    </file>
+    <file name="scenario.js">
+      it('should translate', function () {
+        inject(function ($rootScope, $compile) {
+          $rootScope.translationId = 'TRANSLATION_ID';
+
+          element = $compile('<p translate="TRANSLATION_ID"></p>')($rootScope);
+          $rootScope.$digest();
+          expect(element.text()).toBe('Hello there!');
+
+          element = $compile('<p translate="{{translationId}}"></p>')($rootScope);
+          $rootScope.$digest();
+          expect(element.text()).toBe('Hello there!');
+
+          element = $compile('<p translate>TRANSLATION_ID</p>')($rootScope);
+          $rootScope.$digest();
+          expect(element.text()).toBe('Hello there!');
+
+          element = $compile('<p translate>{{translationId}}</p>')($rootScope);
+          $rootScope.$digest();
+          expect(element.text()).toBe('Hello there!');
+
+          element = $compile('<p translate translate-attr-title="TRANSLATION_ID"></p>')($rootScope);
+          $rootScope.$digest();
+          expect(element.attr('title')).toBe('Hello there!');
+        });
+      });
+    </file>
+   </example>
+ */
+.directive('translate', translateDirective);
+function translateDirective($translate, $q, $interpolate, $compile, $parse, $rootScope) {
+
+  'use strict';
+
+  /**
+   * @name trim
+   * @private
+   *
+   * @description
+   * trim polyfill
+   *
+   * @returns {string} The string stripped of whitespace from both ends
+   */
+  var trim = function() {
+    return this.toString().replace(/^\s+|\s+$/g, '');
+  };
+
+  return {
+    restrict: 'AE',
+    scope: true,
+    priority: $translate.directivePriority(),
+    compile: function (tElement, tAttr) {
+
+      var translateValuesExist = (tAttr.translateValues) ?
+        tAttr.translateValues : undefined;
+
+      var translateInterpolation = (tAttr.translateInterpolation) ?
+        tAttr.translateInterpolation : undefined;
+
+      var translateValueExist = tElement[0].outerHTML.match(/translate-value-+/i);
+
+      var interpolateRegExp = '^(.*)(' + $interpolate.startSymbol() + '.*' + $interpolate.endSymbol() + ')(.*)',
+          watcherRegExp = '^(.*)' + $interpolate.startSymbol() + '(.*)' + $interpolate.endSymbol() + '(.*)';
+
+      return function linkFn(scope, iElement, iAttr) {
+
+        scope.interpolateParams = {};
+        scope.preText = '';
+        scope.postText = '';
+        var translationIds = {};
+
+        var initInterpolationParams = function (interpolateParams, iAttr, tAttr) {
+          // initial setup
+          if (iAttr.translateValues) {
+            angular.extend(interpolateParams, $parse(iAttr.translateValues)(scope.$parent));
+          }
+          // initially fetch all attributes if existing and fill the params
+          if (translateValueExist) {
+            for (var attr in tAttr) {
+              if (Object.prototype.hasOwnProperty.call(iAttr, attr) && attr.substr(0, 14) === 'translateValue' && attr !== 'translateValues') {
+                var attributeName = angular.lowercase(attr.substr(14, 1)) + attr.substr(15);
+                interpolateParams[attributeName] = tAttr[attr];
+              }
+            }
+          }
+        };
+
+        // Ensures any change of the attribute "translate" containing the id will
+        // be re-stored to the scope's "translationId".
+        // If the attribute has no content, the element's text value (white spaces trimmed off) will be used.
+        var observeElementTranslation = function (translationId) {
+
+          // Remove any old watcher
+          if (angular.isFunction(observeElementTranslation._unwatchOld)) {
+            observeElementTranslation._unwatchOld();
+            observeElementTranslation._unwatchOld = undefined;
+          }
+
+          if (angular.equals(translationId , '') || !angular.isDefined(translationId)) {
+            // Resolve translation id by inner html if required
+            var interpolateMatches = trim.apply(iElement.text()).match(interpolateRegExp);
+            // Interpolate translation id if required
+            if (angular.isArray(interpolateMatches)) {
+              scope.preText = interpolateMatches[1];
+              scope.postText = interpolateMatches[3];
+              translationIds.translate = $interpolate(interpolateMatches[2])(scope.$parent);
+              var watcherMatches = iElement.text().match(watcherRegExp);
+              if (angular.isArray(watcherMatches) && watcherMatches[2] && watcherMatches[2].length) {
+                observeElementTranslation._unwatchOld = scope.$watch(watcherMatches[2], function (newValue) {
+                  translationIds.translate = newValue;
+                  updateTranslations();
+                });
+              }
+            } else {
+              translationIds.translate = iElement.text().replace(/^\s+|\s+$/g,'');
+            }
+          } else {
+            translationIds.translate = translationId;
+          }
+          updateTranslations();
+        };
+
+        var observeAttributeTranslation = function (translateAttr) {
+          iAttr.$observe(translateAttr, function (translationId) {
+            translationIds[translateAttr] = translationId;
+            updateTranslations();
+          });
+        };
+
+        // initial setup with values
+        initInterpolationParams(scope.interpolateParams, iAttr, tAttr);
+
+        var firstAttributeChangedEvent = true;
+        iAttr.$observe('translate', function (translationId) {
+          if (typeof translationId === 'undefined') {
+            // case of element "<translate>xyz</translate>"
+            observeElementTranslation('');
+          } else {
+            // case of regular attribute
+            if (translationId !== '' || !firstAttributeChangedEvent) {
+              translationIds.translate = translationId;
+              updateTranslations();
+            }
+          }
+          firstAttributeChangedEvent = false;
+        });
+
+        for (var translateAttr in iAttr) {
+          if (iAttr.hasOwnProperty(translateAttr) && translateAttr.substr(0, 13) === 'translateAttr') {
+            observeAttributeTranslation(translateAttr);
+          }
+        }
+
+        iAttr.$observe('translateDefault', function (value) {
+          scope.defaultText = value;
+        });
+
+        if (translateValuesExist) {
+          iAttr.$observe('translateValues', function (interpolateParams) {
+            if (interpolateParams) {
+              scope.$parent.$watch(function () {
+                angular.extend(scope.interpolateParams, $parse(interpolateParams)(scope.$parent));
+              });
+            }
+          });
+        }
+
+        if (translateValueExist) {
+          var observeValueAttribute = function (attrName) {
+            iAttr.$observe(attrName, function (value) {
+              var attributeName = angular.lowercase(attrName.substr(14, 1)) + attrName.substr(15);
+              scope.interpolateParams[attributeName] = value;
+            });
+          };
+          for (var attr in iAttr) {
+            if (Object.prototype.hasOwnProperty.call(iAttr, attr) && attr.substr(0, 14) === 'translateValue' && attr !== 'translateValues') {
+              observeValueAttribute(attr);
+            }
+          }
+        }
+
+        // Master update function
+        var updateTranslations = function () {
+          for (var key in translationIds) {
+
+            if (translationIds.hasOwnProperty(key) && translationIds[key] !== undefined) {
+              updateTranslation(key, translationIds[key], scope, scope.interpolateParams, scope.defaultText);
+            }
+          }
+        };
+
+        // Put translation processing function outside loop
+        var updateTranslation = function(translateAttr, translationId, scope, interpolateParams, defaultTranslationText) {
+          if (translationId) {
+            $translate(translationId, interpolateParams, translateInterpolation, defaultTranslationText)
+              .then(function (translation) {
+                applyTranslation(translation, scope, true, translateAttr);
+              }, function (translationId) {
+                applyTranslation(translationId, scope, false, translateAttr);
+              });
+          } else {
+            // as an empty string cannot be translated, we can solve this using successful=false
+            applyTranslation(translationId, scope, false, translateAttr);
+          }
+        };
+
+        var applyTranslation = function (value, scope, successful, translateAttr) {
+          if (translateAttr === 'translate') {
+            // default translate into innerHTML
+            if (!successful && typeof scope.defaultText !== 'undefined') {
+              value = scope.defaultText;
+            }
+            iElement.html(scope.preText + value + scope.postText);
+            var globallyEnabled = $translate.isPostCompilingEnabled();
+            var locallyDefined = typeof tAttr.translateCompile !== 'undefined';
+            var locallyEnabled = locallyDefined && tAttr.translateCompile !== 'false';
+            if ((globallyEnabled && !locallyDefined) || locallyEnabled) {
+              $compile(iElement.contents())(scope);
+            }
+          } else {
+            // translate attribute
+            if (!successful && typeof scope.defaultText !== 'undefined') {
+              value = scope.defaultText;
+            }
+            var attributeName = iAttr.$attr[translateAttr];
+            if (attributeName.substr(0, 5) === 'data-') {
+              // ensure html5 data prefix is stripped
+              attributeName = attributeName.substr(5);
+            }
+            attributeName = attributeName.substr(15);
+            iElement.attr(attributeName, value);
+          }
+        };
+
+        if (translateValuesExist || translateValueExist || iAttr.translateDefault) {
+          scope.$watch('interpolateParams', updateTranslations, true);
+        }
+
+        // Ensures the text will be refreshed after the current language was changed
+        // w/ $translate.use(...)
+        var unbind = $rootScope.$on('$translateChangeSuccess', updateTranslations);
+
+        // ensure translation will be looked up at least one
+        if (iElement.text().length) {
+          if (iAttr.translate) {
+            observeElementTranslation(iAttr.translate);
+          } else {
+            observeElementTranslation('');
+          }
+        } else if (iAttr.translate) {
+          // ensure attribute will be not skipped
+          observeElementTranslation(iAttr.translate);
+        }
+        updateTranslations();
+        scope.$on('$destroy', unbind);
+      };
+    }
+  };
+}
+translateDirective.$inject = ['$translate', '$q', '$interpolate', '$compile', '$parse', '$rootScope'];
+
+translateDirective.displayName = 'translateDirective';
+
+angular.module('pascalprecht.translate')
+/**
+ * @ngdoc directive
+ * @name pascalprecht.translate.directive:translateCloak
+ * @requires $rootScope
+ * @requires $translate
+ * @restrict A
+ *
+ * $description
+ * Adds a `translate-cloak` class name to the given element where this directive
+ * is applied initially and removes it, once a loader has finished loading.
+ *
+ * This directive can be used to prevent initial flickering when loading translation
+ * data asynchronously.
+ *
+ * The class name is defined in
+ * {@link pascalprecht.translate.$translateProvider#cloakClassName $translate.cloakClassName()}.
+ *
+ * @param {string=} translate-cloak If a translationId is provided, it will be used for showing
+ *                                  or hiding the cloak. Basically it relies on the translation
+ *                                  resolve.
+ */
+.directive('translateCloak', translateCloakDirective);
+
+function translateCloakDirective($rootScope, $translate) {
+
+  'use strict';
+
+  return {
+    compile: function (tElement) {
+      var applyCloak = function () {
+        tElement.addClass($translate.cloakClassName());
+      },
+      removeCloak = function () {
+        tElement.removeClass($translate.cloakClassName());
+      },
+      removeListener = $rootScope.$on('$translateChangeEnd', function () {
+        removeCloak();
+        removeListener();
+        removeListener = null;
+      });
+      applyCloak();
+
+      return function linkFn(scope, iElement, iAttr) {
+        // Register a watcher for the defined translation allowing a fine tuned cloak
+        if (iAttr.translateCloak && iAttr.translateCloak.length) {
+          iAttr.$observe('translateCloak', function (translationId) {
+            $translate(translationId).then(removeCloak, applyCloak);
+          });
+        }
+      };
+    }
+  };
+}
+translateCloakDirective.$inject = ['$rootScope', '$translate'];
+
+translateCloakDirective.displayName = 'translateCloakDirective';
+
+angular.module('pascalprecht.translate')
+/**
+ * @ngdoc filter
+ * @name pascalprecht.translate.filter:translate
+ * @requires $parse
+ * @requires pascalprecht.translate.$translate
+ * @function
+ *
+ * @description
+ * Uses `$translate` service to translate contents. Accepts interpolate parameters
+ * to pass dynamized values though translation.
+ *
+ * @param {string} translationId A translation id to be translated.
+ * @param {*=} interpolateParams Optional object literal (as hash or string) to pass values into translation.
+ *
+ * @returns {string} Translated text.
+ *
+ * @example
+   <example module="ngView">
+    <file name="index.html">
+      <div ng-controller="TranslateCtrl">
+
+        <pre>{{ 'TRANSLATION_ID' | translate }}</pre>
+        <pre>{{ translationId | translate }}</pre>
+        <pre>{{ 'WITH_VALUES' | translate:'{value: 5}' }}</pre>
+        <pre>{{ 'WITH_VALUES' | translate:values }}</pre>
+
+      </div>
+    </file>
+    <file name="script.js">
+      angular.module('ngView', ['pascalprecht.translate'])
+
+      .config(function ($translateProvider) {
+
+        $translateProvider.translations('en', {
+          'TRANSLATION_ID': 'Hello there!',
+          'WITH_VALUES': 'The following value is dynamic: {{value}}'
+        });
+        $translateProvider.preferredLanguage('en');
+
+      });
+
+      angular.module('ngView').controller('TranslateCtrl', function ($scope) {
+        $scope.translationId = 'TRANSLATION_ID';
+
+        $scope.values = {
+          value: 78
+        };
+      });
+    </file>
+   </example>
+ */
+.filter('translate', translateFilterFactory);
+
+function translateFilterFactory($parse, $translate) {
+
+  'use strict';
+
+  var translateFilter = function (translationId, interpolateParams, interpolation) {
+
+    if (!angular.isObject(interpolateParams)) {
+      interpolateParams = $parse(interpolateParams)(this);
+    }
+
+    return $translate.instant(translationId, interpolateParams, interpolation);
+  };
+
+  if ($translate.statefulFilter()) {
+    translateFilter.$stateful = true;
+  }
+
+  return translateFilter;
+}
+translateFilterFactory.$inject = ['$parse', '$translate'];
+
+translateFilterFactory.displayName = 'translateFilterFactory';
+
+angular.module('pascalprecht.translate')
+
+/**
+ * @ngdoc object
+ * @name pascalprecht.translate.$translationCache
+ * @requires $cacheFactory
+ *
+ * @description
+ * The first time a translation table is used, it is loaded in the translation cache for quick retrieval. You
+ * can load translation tables directly into the cache by consuming the
+ * `$translationCache` service directly.
+ *
+ * @return {object} $cacheFactory object.
+ */
+  .factory('$translationCache', $translationCache);
+
+function $translationCache($cacheFactory) {
+
+  'use strict';
+
+  return $cacheFactory('translations');
+}
+$translationCache.$inject = ['$cacheFactory'];
+
+$translationCache.displayName = '$translationCache';
+return 'pascalprecht.translate';
+
+}));
+
 /*!
  * Bootstrap v3.3.4 (http://getbootstrap.com)
  * Copyright 2011-2015 Twitter, Inc.
@@ -59516,6 +63901,84 @@ if (typeof jQuery === 'undefined') {
 
 })();
 
+"use strict";
+
+angular.module("ui.checkbox", []).directive("checkbox", function() {
+	return {
+		scope: {},
+		require: "ngModel",
+		restrict: "E",
+		replace: "true",
+		template: "<button type=\"button\" ng-style=\"stylebtn\" class=\"btn btn-default\" ng-class=\"{'btn-xs': size==='default', 'btn-sm': size==='large', 'btn-lg': size==='largest'}\">" +
+			"<span ng-style=\"styleicon\" class=\"glyphicon\" ng-class=\"{'glyphicon-ok': checked===true}\"></span>" +
+			"</button>",
+		link: function(scope, elem, attrs, modelCtrl) {
+			scope.size = "default";
+			// Default Button Styling
+			scope.stylebtn = {};
+			// Default Checkmark Styling
+			scope.styleicon = {"width": "10px", "left": "-1px"};
+			// If size is undefined, Checkbox has normal size (Bootstrap 'xs')
+			if(attrs.large !== undefined) {
+				scope.size = "large";
+				scope.stylebtn = {"padding-top": "2px", "padding-bottom": "2px", "height": "30px"};
+				scope.styleicon = {"width": "8px", "left": "-5px", "font-size": "17px"};
+			}
+			if(attrs.larger !== undefined) {
+				scope.size = "larger";
+				scope.stylebtn = {"padding-top": "2px", "padding-bottom": "2px", "height": "34px"};
+				scope.styleicon = {"width": "8px", "left": "-8px", "font-size": "22px"};
+			}
+			if(attrs.largest !== undefined) {
+				scope.size = "largest";
+				scope.stylebtn = {"padding-top": "2px", "padding-bottom": "2px", "height": "45px"};
+				scope.styleicon = {"width": "11px", "left": "-11px", "font-size": "30px"};
+			}
+
+			var trueValue = true;
+			var falseValue = false;
+
+			// If defined set true value
+			if(attrs.ngTrueValue !== undefined) {
+				trueValue = attrs.ngTrueValue;
+			}
+			// If defined set false value
+			if(attrs.ngFalseValue !== undefined) {
+				falseValue = attrs.ngFalseValue;
+			}
+
+			// Check if name attribute is set and if so add it to the DOM element
+			if(scope.name !== undefined) {
+				elem.name = scope.name;
+			}
+
+			// Update element when model changes
+			scope.$watch(function() {
+				if(modelCtrl.$modelValue === trueValue || modelCtrl.$modelValue === true) {
+					modelCtrl.$setViewValue(trueValue);
+				} else {
+					modelCtrl.$setViewValue(falseValue);
+				}
+				return modelCtrl.$modelValue;
+			}, function(newVal, oldVal) {
+				scope.checked = modelCtrl.$modelValue === trueValue;
+			}, true);
+
+			// On click swap value and trigger onChange function
+			elem.bind("click", function() {
+				scope.$apply(function() {
+					if(modelCtrl.$modelValue === falseValue) {
+						modelCtrl.$setViewValue(trueValue);
+					} else {
+						modelCtrl.$setViewValue(falseValue);
+					}
+				});
+			});
+		}
+	};
+});
+!function(){"use strict";var a=angular.module("translate.sub",[]);a.provider("$translate",[function(){var a=[],n="en-US";this.translations=function(e,s){angular.isDefined(e)&&angular.isDefined(s)&&(a[e]=angular.copy(s),n=e)},this.$get=[function(){return{instant:function(e){return angular.isDefined(e)&&angular.isDefined(a[n][e])?a[n][e]:""}}}]}]),a.filter("translate",["$translate",function(a){return function(n){return a.instant(n)}}]);var n;try{angular.module("pascalprecht.translate"),n=angular.module("dialogs.controllers",["ui.bootstrap.modal","pascalprecht.translate"])}catch(e){n=angular.module("dialogs.controllers",["ui.bootstrap.modal","translate.sub"])}n.controller("errorDialogCtrl",["$scope","$modalInstance","$translate","data",function(a,n,e,s){a.header=angular.isDefined(s.header)?s.header:e.instant("DIALOGS_ERROR"),a.msg=angular.isDefined(s.msg)?s.msg:e.instant("DIALOGS_ERROR_MSG"),a.icon=angular.isDefined(s.fa)&&angular.equals(s.fa,!0)?"fa fa-warning":"glyphicon glyphicon-warning-sign",a.close=function(){n.close(),a.$destroy()}}]),n.controller("waitDialogCtrl",["$scope","$modalInstance","$translate","$timeout","data",function(a,n,e,s,t){a.header=angular.isDefined(t.header)?t.header:e.instant("DIALOGS_PLEASE_WAIT_ELIPS"),a.msg=angular.isDefined(t.msg)?t.msg:e.instant("DIALOGS_PLEASE_WAIT_MSG"),a.progress=angular.isDefined(t.progress)?t.progress:100,a.icon=angular.isDefined(t.fa)&&angular.equals(t.fa,!0)?"fa fa-clock-o":"glyphicon glyphicon-time",a.$on("dialogs.wait.complete",function(){s(function(){n.close(),a.$destroy()})}),a.$on("dialogs.wait.message",function(n,e){a.msg=angular.isDefined(e.msg)?e.msg:a.msg}),a.$on("dialogs.wait.progress",function(n,e){a.msg=angular.isDefined(e.msg)?e.msg:a.msg,a.progress=angular.isDefined(e.progress)?e.progress:a.progress}),a.getProgress=function(){return{width:a.progress+"%"}}}]),n.controller("notifyDialogCtrl",["$scope","$modalInstance","$translate","data",function(a,n,e,s){a.header=angular.isDefined(s.header)?s.header:e.instant("DIALOGS_NOTIFICATION"),a.msg=angular.isDefined(s.msg)?s.msg:e.instant("DIALOGS_NOTIFICATION_MSG"),a.icon=angular.isDefined(s.fa)&&angular.equals(s.fa,!0)?"fa fa-info":"glyphicon glyphicon-info-sign",a.close=function(){n.close(),a.$destroy()}}]),n.controller("confirmDialogCtrl",["$scope","$modalInstance","$translate","data",function(a,n,e,s){a.header=angular.isDefined(s.header)?s.header:e.instant("DIALOGS_CONFIRMATION"),a.msg=angular.isDefined(s.msg)?s.msg:e.instant("DIALOGS_CONFIRMATION_MSG"),a.icon=angular.isDefined(s.fa)&&angular.equals(s.fa,!0)?"fa fa-check":"glyphicon glyphicon-check",a.no=function(){n.dismiss("no")},a.yes=function(){n.close("yes")}}]),angular.module("dialogs.services",["ui.bootstrap.modal","dialogs.controllers"]).provider("dialogs",[function(){var a=!0,n=!0,e="dialogs-default",s="dialogs-backdrop-default",t=!0,o=null,l="lg",r=!1,i=!1,d=function(t){var o={};return t=t||{},o.kb=angular.isDefined(t.keyboard)?!!t.keyboard:n,o.bd=angular.isDefined(t.backdrop)?t.backdrop:a,o.bdc=angular.isDefined(t.backdropClass)?t.backdropClass:s,o.ws=!angular.isDefined(t.size)||"sm"!==t.size&&"lg"!==t.size&&"md"!==t.size?l:t.size,o.wc=angular.isDefined(t.windowClass)?t.windowClass:e,o.anim=angular.isDefined(t.animation)?!!t.animation:r,o};this.useBackdrop=function(n){angular.isDefined(n)&&(a=n)},this.useEscClose=function(a){angular.isDefined(a)&&(n=angular.equals(a,0)||angular.equals(a,"false")||angular.equals(a,"no")||angular.equals(a,null)||angular.equals(a,!1)?!1:!0)},this.useClass=function(a){angular.isDefined(a)&&(e=a)},this.useCopy=function(a){angular.isDefined(a)&&(t=angular.equals(a,0)||angular.equals(a,"false")||angular.equals(a,"no")||angular.equals(a,null)||angular.equals(a,!1)?!1:!0)},this.setWindowTmpl=function(a){angular.isDefined(a)&&(o=a)},this.setSize=function(a){angular.isDefined(a)&&(l=angular.equals(a,"sm")||angular.equals(a,"lg")||angular.equals(a,"md")?a:l)},this.useAnimation=function(){r=!0},this.useFontAwesome=function(){i=!0},this.$get=["$modal",function(a){return{error:function(n,e,s){return s=d(s),a.open({templateUrl:"/dialogs/error.html",controller:"errorDialogCtrl",backdrop:s.bd,backdropClass:s.bdc,keyboard:s.kb,windowClass:s.wc,size:s.ws,animation:s.anim,resolve:{data:function(){return{header:angular.copy(n),msg:angular.copy(e),fa:i}}}})},wait:function(n,e,s,t){return t=d(t),a.open({templateUrl:"/dialogs/wait.html",controller:"waitDialogCtrl",backdrop:t.bd,backdropClass:t.bdc,keyboard:t.kb,windowClass:t.wc,size:t.ws,animation:t.anim,resolve:{data:function(){return{header:angular.copy(n),msg:angular.copy(e),progress:angular.copy(s),fa:i}}}})},notify:function(n,e,s){return s=d(s),a.open({templateUrl:"/dialogs/notify.html",controller:"notifyDialogCtrl",backdrop:s.bd,backdropClass:s.bdc,keyboard:s.kb,windowClass:s.wc,size:s.ws,animation:s.anim,resolve:{data:function(){return{header:angular.copy(n),msg:angular.copy(e),fa:i}}}})},confirm:function(n,e,s){return s=d(s),a.open({templateUrl:"/dialogs/confirm.html",controller:"confirmDialogCtrl",backdrop:s.bd,backdropClass:s.bdc,keyboard:s.kb,windowClass:s.wc,size:s.ws,animation:s.anim,resolve:{data:function(){return{header:angular.copy(n),msg:angular.copy(e),fa:i}}}})},create:function(n,e,s,o){var l=o&&angular.isDefined(o.copy)?o.copy:t;return o=d(o),a.open({templateUrl:n,controller:e,keyboard:o.kb,backdrop:o.bd,backdropClass:o.bdc,windowClass:o.wc,size:o.ws,animation:o.anim,resolve:{data:function(){return l?angular.copy(s):s}}})}}}]}]),angular.module("dialogs.main",["dialogs.services","ngSanitize"]).config(["$translateProvider","dialogsProvider",function(a,n){try{angular.module("pascalprecht.translate")}catch(e){a.translations("en-US",{DIALOGS_ERROR:"Error",DIALOGS_ERROR_MSG:"An unknown error has occurred.",DIALOGS_CLOSE:"Close",DIALOGS_PLEASE_WAIT:"Please Wait",DIALOGS_PLEASE_WAIT_ELIPS:"Please Wait...",DIALOGS_PLEASE_WAIT_MSG:"Waiting on operation to complete.",DIALOGS_PERCENT_COMPLETE:"% Complete",DIALOGS_NOTIFICATION:"Notification",DIALOGS_NOTIFICATION_MSG:"Unknown application notification.",DIALOGS_CONFIRMATION:"Confirmation",DIALOGS_CONFIRMATION_MSG:"Confirmation required.",DIALOGS_OK:"OK",DIALOGS_YES:"Yes",DIALOGS_NO:"No"})}try{var s=document.styleSheets;a:for(var t=s.length-1;t>=0;t--){var o=null,l=null;if(!s[t].disabled){if(null!==s[t].href&&(o=s[t].href.match(/font\-*awesome/i)),angular.isArray(o)){n.useFontAwesome();break}l=s[t].cssRules;for(var r=l.length-1;r>=0;r--)if(".fa"==l[r].selectorText.toLowerCase()){n.useFontAwesome();break a}}}}catch(e){}}]).run(["$templateCache","$interpolate",function(a,n){var e=n.startSymbol(),s=n.endSymbol();a.put("/dialogs/error.html",'<div class="modal-header dialog-header-error"><button type="button" class="close" ng-click="close()">&times;</button><h4 class="modal-title text-danger"><span class="'+e+"icon"+s+'"></span> <span ng-bind-html="header"></span></h4></div><div class="modal-body text-danger" ng-bind-html="msg"></div><div class="modal-footer"><button type="button" class="btn btn-default" ng-click="close()">'+e+'"DIALOGS_CLOSE" | translate'+s+"</button></div>"),a.put("/dialogs/wait.html",'<div class="modal-header dialog-header-wait"><h4 class="modal-title"><span class="'+e+"icon"+s+'"></span> '+e+"header"+s+'</h4></div><div class="modal-body"><p ng-bind-html="msg"></p><div class="progress progress-striped active"><div class="progress-bar progress-bar-info" ng-style="getProgress()"></div><span class="sr-only">'+e+"progress"+s+e+'"DIALOGS_PERCENT_COMPLETE" | translate'+s+"</span></div></div>"),a.put("/dialogs/notify.html",'<div class="modal-header dialog-header-notify"><button type="button" class="close" ng-click="close()" class="pull-right">&times;</button><h4 class="modal-title text-info"><span class="'+e+"icon"+s+'"></span> '+e+"header"+s+'</h4></div><div class="modal-body text-info" ng-bind-html="msg"></div><div class="modal-footer"><button type="button" class="btn btn-primary" ng-click="close()">'+e+'"DIALOGS_OK" | translate'+s+"</button></div>"),a.put("/dialogs/confirm.html",'<div class="modal-header dialog-header-confirm"><button type="button" class="close" ng-click="no()">&times;</button><h4 class="modal-title"><span class="'+e+"icon"+s+'"></span> '+e+"header"+s+'</h4></div><div class="modal-body" ng-bind-html="msg"></div><div class="modal-footer"><button type="button" class="btn btn-default" ng-click="yes()">'+e+'"DIALOGS_YES" | translate'+s+'</button><button type="button" class="btn btn-primary" ng-click="no()">'+e+'"DIALOGS_NO" | translate'+s+"</button></div>")}])}();
+angular.module("dialogs.default-translations",["pascalprecht.translate"]).config(["$translateProvider",function(O){O.translations("en-US",{DIALOGS_ERROR:"Error",DIALOGS_ERROR_MSG:"An unknown error has occurred.",DIALOGS_CLOSE:"Close",DIALOGS_PLEASE_WAIT:"Please Wait",DIALOGS_PLEASE_WAIT_ELIPS:"Please Wait...",DIALOGS_PLEASE_WAIT_MSG:"Waiting on operation to complete.",DIALOGS_PERCENT_COMPLETE:"% Complete",DIALOGS_NOTIFICATION:"Notification",DIALOGS_NOTIFICATION_MSG:"Unknown application notification.",DIALOGS_CONFIRMATION:"Confirmation",DIALOGS_CONFIRMATION_MSG:"Confirmation required.",DIALOGS_OK:"OK",DIALOGS_YES:"Yes",DIALOGS_NO:"No"}),O.translations("zh-CN",{DIALOGS_ERROR:"错误",DIALOGS_ERROR_MSG:"出现未知错误。",DIALOGS_CLOSE:"关闭",DIALOGS_PLEASE_WAIT:"请稍候",DIALOGS_PLEASE_WAIT_ELIPS:"请稍候...",DIALOGS_PLEASE_WAIT_MSG:"请等待操作完成。",DIALOGS_PERCENT_COMPLETE:"% 已完成",DIALOGS_NOTIFICATION:"通知",DIALOGS_NOTIFICATION_MSG:"未知应用程序的通知。",DIALOGS_CONFIRMATION:"确认",DIALOGS_CONFIRMATION_MSG:"确认要求。",DIALOGS_OK:"确定",DIALOGS_YES:"确认",DIALOGS_NO:"取消"}),O.translations("es",{DIALOGS_ERROR:"Error",DIALOGS_ERROR_MSG:"Se ha producido un error.",DIALOGS_CLOSE:"Cerrar",DIALOGS_PLEASE_WAIT:"Espere por favor",DIALOGS_PLEASE_WAIT_ELIPS:"Espere por favor...",DIALOGS_PLEASE_WAIT_MSG:"Completando operación.",DIALOGS_PERCENT_COMPLETE:"% Completado",DIALOGS_NOTIFICATION:"Notificación",DIALOGS_NOTIFICATION_MSG:"Notificación de una aplicación desconocida.",DIALOGS_CONFIRMATION:"Confirmación",DIALOGS_CONFIRMATION_MSG:"Se requiere confirmacion.",DIALOGS_OK:"Aceptar",DIALOGS_YES:"Sí",DIALOGS_NO:"No"}),O.preferredLanguage("en-US")}]);
 /*
  * metismenu - v1.1.3
  * Easy menu jQuery plugin for Twitter Bootstrap 3

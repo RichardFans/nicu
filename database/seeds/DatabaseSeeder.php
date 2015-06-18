@@ -43,6 +43,7 @@ class DatabaseSeeder extends Seeder
                 DB::reconnect('node');
             }
             $this->call('UserTableSeeder');
+            $this->call('UserTypeTableSeeder');
             $this->call('RoleTableSeeder');
             $this->call('RouteTableSeeder');
             $this->call('CategoryTableSeeder');

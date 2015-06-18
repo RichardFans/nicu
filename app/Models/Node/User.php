@@ -10,4 +10,6 @@ class User extends \Eloquent implements AuthenticatableContract {
     protected $connection = 'node';
 
     protected $table = 'users';
+
+    protected $hidden = ['password', 'created_at', 'updated_at'];
 }

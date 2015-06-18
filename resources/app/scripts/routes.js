@@ -12,7 +12,17 @@ function MainRouter($stateProvider, $urlRouterProvider, $httpProvider) {
         .state('app', {
             url: '/app',
             templateUrl: 'views/categories/main.html',
+            resolve: {
+                window: ['$window', function ($window) {
+                    return $window;
+                }]
+            },
             controller: 'MainCtrl',
+            //目前能实现注销后路由状态重载的办法，但会引起页面刷新（bad！）
+            //关注：https://github.com/angular-ui/ui-router/issues/1095
+            onExit: function (window) {
+                window.location.reload();
+            },
             data: {
                 requireLogin: true
             }
@@ -29,6 +39,25 @@ function MainRouter($stateProvider, $urlRouterProvider, $httpProvider) {
             controller: 'LoginCtrl',
             data: {
                 requireLogin: false
+            }
+        })
+        .state('blank', {
+            templateUrl: 'views/pages/blank.html',
+            url: '/blank',
+            data: {
+                requireLogin: false
+            },
+            resolve: {
+                timeout: ['$timeout', function ($timeout) {
+                    return $timeout;
+                }]
+            },
+            onEnter: function (timeout) {
+                timeout(function () {
+                    var url = "http://" + window.location.host + "/#/login";
+                    console.log('url = ' + url);
+                    window.location.href = url;
+                }, 200, true);
             }
         });
 
@@ -48,7 +77,7 @@ function MainRouter($stateProvider, $urlRouterProvider, $httpProvider) {
                     }
                     return config;
                 },
-                'requestError': function (response) {
+                'responseError': function (response) {
                     if (response.status === 401 || response.status === 403) {
                         Perference.deleteToken();
                         $state.go('login');
@@ -58,6 +87,16 @@ function MainRouter($stateProvider, $urlRouterProvider, $httpProvider) {
             };
         }]);
 }
+angular.module('nicu')
+    .config(['dialogsProvider', '$translateProvider', function (dialogsProvider, $translateProvider) {
+        dialogsProvider.useBackdrop('static');
+        dialogsProvider.useEscClose(true);
+        dialogsProvider.useCopy(false);
+        dialogsProvider.setSize('sm');
+
+        $translateProvider.preferredLanguage('zh-CN');
+    }]);
+
 
 angular.module('nicu').run(['$rootScope', '$state', 'Perference',
     function ($rootScope, $state, Perference) {

@@ -28,7 +28,7 @@ body {
 
 #page-wrapper {
   padding: 0 15px;
-  min-height: 860px;
+  min-height: 680px;
   background-color: white;
 }
 
@@ -403,6 +403,26 @@ table.dataTable thead .sorting:after {
   }
 }
 
+.breadcrumb {
+  //  border: outset #00acee 1px;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.tab-content {
+  .panel {
+    margin-top: -1px;
+    .panel-body {
+      .panel-heading {
+        .btn-group {
+          margin-top: -4px;
+        }
+      }
+    }
+  }
+
+}
+
 .pager li.active > a, .pager li.active > span {
   color: #eeeeee;
   background-color: @brand-primary;
@@ -420,6 +440,76 @@ table.dataTable thead .sorting:after {
 .ng-table th.text-right {
   text-align: right;
 }
+
 .ng-table th.text-left {
   text-align: left;
 }
+
+.no-selection {
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+}
+
+.modal-header {
+  .modal-title {
+    .btn-group {
+      margin-top: 1px;
+    }
+  }
+}
+
+.dialog-header-error {
+  background-color: #d2322d;
+}
+
+.dialog-header-wait {
+  background-color: #428bca;
+}
+
+.dialog-header-notify {
+  background-color: #eeeeee;
+}
+
+.dialog-header-confirm {
+  background-color: #f1f1f1;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.dialog-header-error span, .dialog-header-error h4,
+.dialog-header-wait span, .dialog-header-wait h4,
+.dialog-header-confirm span, .dialog-header-confirm h4 {
+  color: #333333;
+}
+
+#tree-root {
+
+  .btn {
+    margin-right: 10px;
+  }
+
+  .angular-ui-tree-handle {
+    cursor: auto;
+  }
+
+  .tree-node {
+    border: 1px solid #dae2ea;
+    padding: 5px;
+    background: #f8faff;
+    color: darken(#7c9eb2, 18%);
+    &:hover {
+      background-color: #e4f6f7;
+    }
+  }
+  .tree-node-content {
+    //    margin: 0px;
+
+  }
+}
+
+
+

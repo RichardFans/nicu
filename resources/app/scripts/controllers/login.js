@@ -1,13 +1,14 @@
 'use strict';
 
 angular.module('nicu.controllers')
-    .controller('LoginCtrl', ['$scope', '$state', 'toaster',
+    .controller('LoginCtrl', ['$scope', '$window', '$state', 'toaster',
         'Nodes', 'Auth', 'Perference', LoginCtrl]);
 //$sessionStorage
-function LoginCtrl($scope, $state, toaster, Nodes, Auth, Perference) {
+function LoginCtrl($scope, $window, $state, toaster, Nodes, Auth, Perference) {
     function successAuth(data) {
         Perference.setToken(data.token, $scope.auto_login);
         Perference.setUser($scope.user);
+
         $state.go('app.home');
     }
 

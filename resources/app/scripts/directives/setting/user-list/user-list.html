@@ -1,0 +1,100 @@
+<div class="panel panel-default">
+
+    <script type="text/ng-template" id="UserTypeDlg.html">
+        <div class="modal-header">
+            <h3 class="modal-title">添加分类</h3>
+        </div>
+        <div class="modal-body">
+
+            <form name="user_type_form" class="form-horizontal" novalidate>
+
+                <div class="form-group">
+                    <label class="col-md-4 control-label">类型名称</label>
+
+                    <div class="col-md-6">
+                        <input type="text" class="form-control" name="name" ng-model="type.name" required/>
+                    </div>
+
+                    <div class="col-md-1" style="padding-top: 6px" ng-show="user_type_form.name.$dirty">
+                        <i class="fa fa-check-circle text-success" ng-show="!user_type_form.name.$invalid"></i>
+                        <i class="fa fa-times-circle text-danger" ng-show="user_type_form.name.$invalid"></i>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="col-md-4 control-label">父类型</label>
+
+                    <div class="col-md-6">
+                        <ui-select ng-model="type.parent"
+                                   ng-disabled="disabled" title="选择上级类型">
+                            <ui-select-match placeholder="选择上级类型...">{{$select.selected.name}}
+                            </ui-select-match>
+                            <ui-select-choices repeat="parent in parents | filter: $select.search">
+                                <span ng-bind-html="parent.name | highlight: $select.search"></span>
+                            </ui-select-choices>
+                        </ui-select>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" ng-click="ok(type)">确认</button>
+            <button class="btn btn-default" ng-click="cancel()">取消</button>
+        </div>
+    </script>
+
+
+    <div class="panel-body">
+
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <strong>员工信息列表</strong>
+
+
+                <div class="btn-group pull-right">
+                    <button ng-click="add()" class="btn btn-primary btn-circle">
+                        <i class="glyphicon glyphicon-plus"></i>
+                    </button>
+                    <button ng-click="tableParams.reload()" class="btn btn-default btn-circle">
+                        <i class="fa fa-refresh"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="panel-body">
+                <div class="table-responsive">
+
+                    <table ng-table-dynamic="tableParams with cols" show-filter="true"
+                           class="table table-bordered table-hover table-row-clicked no-selection">
+
+                        <tr ng-repeat="user in $data" ng-dblclick="edit(user)">
+                            <td data-title="'序号'" header-class="'text-left'" width="50">
+                                {{$index+1}}
+                            </td>
+                            <td title="'员工姓名'" header-class="'text-left'"
+                                sortable="'name'" width="28%">
+                                {{user.name}}
+                            </td>
+                            <td data-title="'上级类型'" header-class="'text-left'"
+                                sortable="'parent_id'">
+                                <span ng-if="!user.$edit">{{user.parent.name}}</span>
+                                <ui-select ng-if="user.$edit" ng-model="user.$parentChanged"
+                                           ng-disabled="disabled" title="选择上级类型">
+                                    <ui-select-match placeholder="选择上级类型...">{{$select.selected.name}}
+                                    </ui-select-match>
+                                    <ui-select-choices repeat="parent in parents_list | filter: $select.search">
+                                        <span ng-bind-html="parent.name | highlight: $select.search"></span>
+                                    </ui-select-choices>
+                                </ui-select>
+                            </td>
+                            <td data-title="'操作'" width="100">
+                                <a href="" class="btn btn-info btn-xs"
+                                   ng-click="edit(user)">编辑</a>
+                                <a href="" class="btn btn-danger btn-xs"
+                                   ng-click="delete(user, $data)">删除</a>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
